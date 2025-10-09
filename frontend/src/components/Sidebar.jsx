@@ -21,6 +21,12 @@ const Sidebar = ({ isCollapsed }) => {
       icon: "fas fa-balance-scale",
       description: "Notice Management"
     },
+    { 
+      title: "Loan Calculator", 
+      url: "/loan-calculator", 
+      icon: "fas fa-balance-scale",
+      description: "Loan Calculation"
+    },
   ];
 
   const quickActions = [
@@ -77,15 +83,17 @@ const Sidebar = ({ isCollapsed }) => {
                 }`
               }
             >
+              {({ isActive }) => (
               <div className="d-flex align-items-center">
                 <i className={`${item.icon} me-3`} style={{ width: '16px' }}></i>
                 {!isCollapsed && (
                   <div>
                     <div className="fw-medium">{item.title}</div>
-                    <small className="opacity-75 text-white">{item.description}</small>
+                      <small className={`opacity-75 ${isActive ? 'text-white' : 'text-gray'}`}>{item.description}</small>
                   </div>
                 )}
               </div>
+              )}
             </NavLink>
           ))}
         </div>

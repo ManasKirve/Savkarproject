@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import LoanRecords from './pages/LoanRecords';
 import LegalNotices from './pages/LegalNotices';
 import './App.css';
+import LoanCalculator from './pages/LoanCalculator';
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => {
               <Route path="/" element={<Dashboard />} />
               <Route path="/loan-records" element={<LoanRecords />} />
               <Route path="/legal-notices" element={<LegalNotices />} />
+              <Route path="/loan-calculator" element={<LoanCalculator />} />
             </Routes>
           </div>
         </div>
