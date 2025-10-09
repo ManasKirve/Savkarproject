@@ -1,0 +1,1014 @@
+import React, { useState, useEffect } from 'react';
+import { LoanService } from '../services/loanService';
+import './LoanRecords.css';
+
+const LoanRecords = () => {
+  // State for loan management
+  const [loans, setLoans] = useState([]);
+  const [filteredLoans, setFilteredLoans] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingLoan, setEditingLoan] = useState(null);
+  const [formData, setFormData] = useState({
+    borrowerName: '',
+    phoneNumber: '',
+    lastAmount: '',
+    emi: '',
+    startDate: '',
+    endDate: '',
+    interestRate: '',
+    paymentMode: 'Cash',
+    totalLoan: '',
+    paidAmount: '0',
+    status: 'Active'
+  });
+
+  // State for profile functionality
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedLoan, setSelectedLoan] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [newDocument, setNewDocument] = useState({ 
+    name: '', 
+    type: 'ID Proof', 
+    file: null,
+    fileName: '' 
+  });
+  const [profileFormData, setProfileFormData] = useState({
+    profilePhoto: '',
+    occupation: '',
+    address: ''
+  });
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [viewingDocument, setViewingDocument] = useState(null);
+
+  useEffect(() => {
+    loadLoans();
+  }, []);
+
+  useEffect(() => {
+    filterLoans();
+  }, [loans, searchTerm, statusFilter]);
+
+  // Load documents when a loan is selected
+  useEffect(() => {
+    if (selectedLoan) {
+      const loanDocuments = LoanService.getDocumentsByLoanId(selectedLoan.id);
+      setDocuments(loanDocuments);
+      setProfileFormData({
+        profilePhoto: selectedLoan.profilePhoto || '',
+        occupation: selectedLoan.occupation || '',
+        address: selectedLoan.address || ''
+      });
+    }
+  }, [selectedLoan]);
+
+  const loadLoans = async () => {
+    try {
+      LoanService.initializeData();
+      const loansData = LoanService.getAllLoans();
+      setLoans(loansData || []);
+    } catch (error) {
+      console.error('Error loading loans:', error);
+      setLoans([]);
+    }
+  };
+
+  const filterLoans = () => {
+    let filtered = loans;
+
+    if (searchTerm) {
+      filtered = filtered.filter(loan => 
+        (loan.customerName || loan.borrowerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (loan.customerPhone || loan.phoneNumber || '').includes(searchTerm)
+      );
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(loan => loan.status === statusFilter);
+    }
+
+    setFilteredLoans(filtered);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const loanData = {
+      ...formData,
+      totalLoan: parseFloat(formData.totalLoan) || 0,
+      paidAmount: parseFloat(formData.paidAmount) || 0,
+      emi: parseFloat(formData.emi) || 0,
+      interestRate: parseFloat(formData.interestRate) || 0,
+      paidAmount: editingLoan ? parseFloat(formData.paidAmount) || 0 : 0
+    };
+
+    // Calculate progress percentage
+    const progress = (loanData.paidAmount / loanData.totalLoan) * 100;
+    
+    // Update status based on progress
+    if (progress >= 100) {
+      loanData.status = 'Closed';
+    } else if (progress > 0) {
+      loanData.status = 'Active';
+    }
+
+    if (editingLoan) {
+      LoanService.updateLoan(editingLoan.id, loanData);
+    } else {
+      LoanService.createLoan(loanData);
+    }
+
+    loadLoans();
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFormData({
+      borrowerName: '',
+      phoneNumber: '',
+      paidAmount: '0',
+      emi: '',
+      startDate: '',
+      endDate: '',
+      interestRate: '',
+      paymentMode: 'Bank Transfer',
+      totalLoan: '',
+      paidAmount: '0',
+      status: 'Active'
+    });
+    setEditingLoan(null);
+    setShowAddModal(false);
+  };
+
+  const handleEdit = (loan) => {
+    setEditingLoan(loan);
+    setFormData({
+      borrowerName: loan.borrowerName || '',
+      phoneNumber: loan.phoneNumber || '',
+      paidAmount: loan.paidAmount?.toString() || '0',
+      emi: loan.emi?.toString() || '',
+      startDate: loan.startDate || '',
+      endDate: loan.endDate || '',
+      interestRate: loan.interestRate?.toString() || '',
+      paymentMode: loan.paymentMode || 'Cash',
+      totalLoan: loan.totalLoan?.toString() || '',
+      paidAmount: loan.paidAmount?.toString() || '0',
+      status: loan.status || 'Active'
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this loan record?')) {
+      LoanService.deleteLoan(id);
+      loadLoans();
+    }
+  };
+
+  // Profile functionality
+  const handleProfileClick = (loan) => {
+    setSelectedLoan(loan);
+    setShowProfileModal(true);
+  };
+
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfileImageFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileFormData({...profileFormData, profilePhoto: reader.result});
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const downloadProfileImage = () => {
+    if (!profileFormData.profilePhoto) return;
+    
+    // Create a download link for the profile image
+    const link = document.createElement('a');
+    link.href = profileFormData.profilePhoto;
+    link.download = `${selectedLoan.borrowerName.replace(/\s+/g, '_')}_profile.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDocumentFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setNewDocument({
+        ...newDocument, 
+        file,
+        fileName: file.name
+      });
+    }
+  };
+
+  const handleAddDocument = () => {
+    if (!newDocument.file || newDocument.name.trim() === '') return;
+    
+    // Convert file to base64 for storage
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      LoanService.createDocument({
+        loanId: selectedLoan.id,
+        name: newDocument.name,
+        type: newDocument.type,
+        fileContent: reader.result,
+        fileName: newDocument.fileName
+      });
+      
+      // Refresh documents
+      const updatedDocuments = LoanService.getDocumentsByLoanId(selectedLoan.id);
+      setDocuments(updatedDocuments);
+      
+      // Reset form
+      setNewDocument({ 
+        name: '', 
+        type: 'ID Proof', 
+        file: null,
+        fileName: '' 
+      });
+      document.getElementById('document-file-input').value = '';
+    };
+    reader.readAsDataURL(newDocument.file);
+  };
+
+  const handleDeleteDocument = (id) => {
+    LoanService.deleteDocument(id);
+    // Refresh documents
+    const updatedDocuments = LoanService.getDocumentsByLoanId(selectedLoan.id);
+    setDocuments(updatedDocuments);
+  };
+
+  const handleSaveProfile = () => {
+    // Convert profile image to base64 if a new file was selected
+    if (profileImageFile) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        LoanService.updateLoan(selectedLoan.id, {
+          profilePhoto: reader.result,
+          occupation: profileFormData.occupation,
+          address: profileFormData.address
+        });
+        
+        // Update the selectedLoan in state to reflect changes
+        setSelectedLoan({
+          ...selectedLoan,
+          profilePhoto: reader.result,
+          occupation: profileFormData.occupation,
+          address: profileFormData.address
+        });
+        
+        // Also update the loans list to reflect changes in the table
+        loadLoans();
+      };
+      reader.readAsDataURL(profileImageFile);
+    } else {
+      // Update without changing the profile photo
+      LoanService.updateLoan(selectedLoan.id, {
+        profilePhoto: profileFormData.profilePhoto,
+        occupation: profileFormData.occupation,
+        address: profileFormData.address
+      });
+      
+      // Update the selectedLoan in state to reflect changes
+      setSelectedLoan({
+        ...selectedLoan,
+        profilePhoto: profileFormData.profilePhoto,
+        occupation: profileFormData.occupation,
+        address: profileFormData.address
+      });
+      
+      // Also update the loans list to reflect changes in the table
+      loadLoans();
+    }
+  };
+
+  const closeProfileModal = () => {
+    setShowProfileModal(false);
+    setSelectedLoan(null);
+    setProfileImageFile(null);
+  };
+
+  const downloadDocument = (document) => {
+    // Create a download link for the document
+    const link = document.createElement('a');
+    link.href = document.fileContent;
+    link.download = document.fileName || document.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Add function to check if a file is an image
+  const isImageFile = (fileName) => {
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+    const extension = fileName.split('.').pop().toLowerCase();
+    return imageExtensions.includes(extension);
+  };
+
+  // Add function to view document
+  const handleViewDocument = (document) => {
+    setViewingDocument(document);
+  };
+
+  const closeDocumentModal = () => {
+    setViewingDocument(null);
+  };
+
+  return (
+    <div className="container-fluid py-4 px-4">
+      {/* Header Section */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="mb-1" style={{ color: '#1e293b', fontWeight: '600' }}>Loan Records</h2>
+          <p className="text-muted mb-0">Manage and track all loan records</p>
+        </div>
+        <button 
+          className="btn btn-primary d-flex align-items-center"
+          onClick={() => setShowAddModal(true)}
+        >
+          <i className="fas fa-plus me-2"></i>
+          <span>Add New Loan</span>
+        </button>
+      </div>
+
+      {/* Statistics Overview */}
+      <div className="row g-3 mb-4">
+        <div className="col-md-3">
+          <div className="card h-100">
+            <div className="card-body">
+              <h6 className="text-muted mb-2">Total Active Loans</h6>
+              <h3 className="mb-0">{loans.filter(loan => loan.status === 'Active').length}</h3>
+              <div className="mt-2">
+                <span className="badge bg-success">Active</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card h-100">
+            <div className="card-body">
+              <h6 className="text-muted mb-2">Total Loan Amount</h6>
+              <h3 className="mb-0">₹{loans.reduce((sum, loan) => sum + (loan.principal || loan.totalLoan || 0), 0).toLocaleString()}</h3>
+              <div className="mt-2">
+                <small className="text-success">
+                  <i className="fas fa-chart-line me-1"></i>Total Portfolio
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card h-100">
+            <div className="card-body">
+              <h6 className="text-muted mb-2">Amount Collected</h6>
+              <h3 className="mb-0">₹{loans.reduce((sum, loan) => sum + (loan.paidAmount || 0), 0).toLocaleString()}</h3>
+              <div className="mt-2">
+                <small className="text-info">
+                  <i className="fas fa-money-bill-wave me-1"></i>Total Recovered
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card h-100">
+            <div className="card-body">
+              <h6 className="text-muted mb-2">Pending Amount</h6>
+              <h3 className="mb-0">₹{loans.reduce((sum, loan) => sum + ((loan.principal || loan.totalLoan || 0) - (loan.paidAmount || 0)), 0).toLocaleString()}</h3>
+              <div className="mt-2">
+                <small className="text-warning">
+                  <i className="fas fa-clock me-1"></i>To be Collected
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <div className="row">
+            <div className="col-md-6">
+              <div className="input-group">
+                <span className="input-group-text">
+                  <i className="fas fa-search"></i>
+                </span>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Search by customer name or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="col-md-6">
+              <select
+                className="form-select"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Loans Table */}
+      <div className="card table-container">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>Borrower Name</th>
+                  <th>Phone Number</th>
+                  <th>Total Loan</th>
+                  <th>Paid Amount</th>
+                  <th>EMI</th>
+                  <th>Interest Rate</th>
+                  <th>Payment Mode</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLoans.map((loan) => (
+                  <tr key={loan.id}>
+                    <td className="fw-medium">{loan.borrowerName}</td>
+                    <td>{loan.phoneNumber}</td>
+                    <td>₹{loan.totalLoan?.toLocaleString()}</td>
+                    <td>₹{loan.paidAmount?.toLocaleString()}</td>
+                    <td>₹{loan.emi?.toLocaleString()}</td>
+                    <td>{loan.interestRate}%</td>
+                    <td>
+                      <span className="text-primary">{loan.paymentMode}</span>
+                    </td>
+                    <td>{new Date(loan.startDate).toLocaleDateString()}</td>
+                    <td>{new Date(loan.endDate).toLocaleDateString()}</td>
+                    <td>
+                      <span className={`badge ${
+                        loan.status === 'Active' ? 'bg-success-subtle text-success' :
+                        loan.status === 'Closed' ? 'bg-secondary-subtle text-secondary' :
+                        'bg-warning-subtle text-warning'
+                      } px-2 py-1 rounded-pill`}>
+                        {loan.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="d-flex align-items-center gap-2" style={{ minWidth: '150px' }}>
+                        <div className="progress flex-grow-1" style={{ height: '8px', backgroundColor: '#f0f0f0' }}>
+                          <div 
+                            className={`progress-bar ${
+                              loan.status === 'Closed' ? 'bg-success' :
+                              loan.status === 'Pending' ? 'bg-warning' : 'bg-primary'
+                            }`}
+                            style={{ 
+                              width: `${((loan.paidAmount || 0) / (loan.totalLoan || 1)) * 100}%`,
+                              transition: 'width 0.5s ease-in-out'
+                            }}
+                          ></div>
+                        </div>
+                        <div style={{ minWidth: '100px' }}>
+                          <small className="text-muted" style={{ whiteSpace: 'nowrap' }}>
+                            ₹{(loan.paidAmount || 0).toLocaleString()} / ₹{(loan.totalLoan || 0).toLocaleString()}
+                          </small>
+                          <br />
+                          <small className="text-primary" style={{ whiteSpace: 'nowrap' }}>
+                            {Math.round(((loan.paidAmount || 0) / (loan.totalLoan || 1)) * 100)}% paid
+                          </small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="d-flex gap-2">
+                        {/* Profile Button */}
+                        <button 
+                          className="btn btn-icon btn-sm rounded-circle btn-light-info"
+                          onClick={() => handleProfileClick(loan)}
+                          title="Profile"
+                        >
+                          <i className="fas fa-user"></i>
+                        </button>
+                        {/* Edit Button */}
+                        <button 
+                          className="btn btn-icon btn-sm rounded-circle btn-light-primary"
+                          onClick={() => handleEdit(loan)}
+                          title="Edit"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        {/* Delete Button */}
+                        <button 
+                          className="btn btn-icon btn-sm rounded-circle btn-light-danger"
+                          onClick={() => handleDelete(loan.id)}
+                          title="Delete"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Add/Edit Modal */}
+      {showAddModal && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  {editingLoan ? 'Edit Loan Record' : 'Add New Loan'}
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close"
+                  onClick={resetForm}
+                ></button>
+              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    {/* Borrower Information */}
+                    <div className="col-12">
+                      <h6 className="mb-3 text-muted">Borrower Information</h6>
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="form-label">Borrower Name *</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter borrower name"
+                            value={formData.borrowerName}
+                            onChange={(e) => setFormData({...formData, borrowerName: e.target.value})}
+                            required
+                          />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Phone Number *</label>
+                          <input
+                            type="tel"
+                            className="form-control"
+                            placeholder="Enter phone number"
+                            value={formData.phoneNumber}
+                            onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Loan Details */}
+                    <div className="col-12">
+                      <h6 className="mb-3 text-muted">Loan Details</h6>
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="form-label">Total Loan Amount *</label>
+                          <div className="input-group">
+                            <span className="input-group-text">₹</span>
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder="Enter total loan amount"
+                              value={formData.totalLoan}
+                              onChange={(e) => setFormData({...formData, totalLoan: e.target.value})}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Paid Amount *</label>
+                          <div className="input-group">
+                            <span className="input-group-text">₹</span>
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder="Enter paid amount"
+                              value={formData.paidAmount}
+                              onChange={(e) => setFormData({...formData, paidAmount: e.target.value})}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">EMI Amount *</label>
+                          <div className="input-group">
+                            <span className="input-group-text">₹</span>
+                            <input
+                              type="number"
+                              className="form-control"
+                              placeholder="Enter EMI amount"
+                              value={formData.emi}
+                              onChange={(e) => setFormData({...formData, emi: e.target.value})}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Interest Rate (%) *</label>
+                          <div className="input-group">
+                            <input
+                              type="number"
+                              step="0.1"
+                              className="form-control"
+                              placeholder="Enter interest rate"
+                              value={formData.interestRate}
+                              onChange={(e) => setFormData({...formData, interestRate: e.target.value})}
+                              required
+                            />
+                            <span className="input-group-text">%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payment Details */}
+                    <div className="col-12">
+                      <h6 className="mb-3 text-muted">Payment Details</h6>
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="form-label">Payment Mode *</label>
+                          <select
+                            className="form-select"
+                            value={formData.paymentMode}
+                            onChange={(e) => setFormData({...formData, paymentMode: e.target.value})}
+                            required
+                          >
+                            <option value="">Select payment mode</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="UPI">UPI</option>
+                          </select>
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Status *</label>
+                          <select
+                            className="form-select"
+                            value={formData.status}
+                            onChange={(e) => setFormData({...formData, status: e.target.value})}
+                            required
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Closed">Closed</option>
+                          </select>
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">Start Date *</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={formData.startDate}
+                            onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                            required
+                          />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label">End Date *</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={formData.endDate}
+                            onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary">
+                    {editingLoan ? 'Update Loan' : 'Add Loan'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && selectedLoan && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Borrower Profile</h5>
+                <button 
+                  type="button" 
+                  className="btn-close"
+                  onClick={closeProfileModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+                {/* Profile Section */}
+                <div className="text-center mb-4">
+                  <div className="mx-auto mb-3 position-relative" style={{ width: '120px', height: '120px' }}>
+                    <img 
+                      src={profileFormData.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedLoan.borrowerName)}&background=0D8ABC&color=fff&size=120`}
+                      alt="Profile" 
+                      className="rounded-circle img-fluid"
+                      style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                    />
+                    <label htmlFor="profile-upload" className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1" style={{ cursor: 'pointer' }}>
+                      <i className="fas fa-camera text-white"></i>
+                    </label>
+                    <input 
+                      id="profile-upload"
+                      type="file"
+                      className="d-none"
+                      accept="image/*"
+                      onChange={handleProfileImageChange}
+                    />
+                    {/* Add download button for profile image */}
+                    {profileFormData.profilePhoto && (
+                      <button 
+                        className="position-absolute top-0 end-0 bg-info rounded-circle p-1"
+                        style={{ cursor: 'pointer' }}
+                        onClick={downloadProfileImage}
+                        title="Download Profile Image"
+                      >
+                        <i className="fas fa-download text-white"></i>
+                      </button>
+                    )}
+                  </div>
+                  <h4>{selectedLoan.borrowerName}</h4>
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      className="form-control text-center"
+                      placeholder="Occupation"
+                      value={profileFormData.occupation}
+                      onChange={(e) => setProfileFormData({...profileFormData, occupation: e.target.value})}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      className="form-control text-center"
+                      placeholder="Address"
+                      value={profileFormData.address}
+                      onChange={(e) => setProfileFormData({...profileFormData, address: e.target.value})}
+                    />
+                  </div>
+                  <p className="text-muted">{selectedLoan.phoneNumber}</p>
+                </div>
+
+                {/* Loan Details Section */}
+                <div className="card mb-4">
+                  <div className="card-header bg-light">
+                    <h5 className="mb-0">Loan Details</h5>
+                  </div>
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-md-6 mb-3">
+                        <strong>Total Loan:</strong> ₹{selectedLoan.totalLoan?.toLocaleString()}
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <strong>Paid Amount:</strong> ₹{selectedLoan.paidAmount?.toLocaleString()}
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <strong>EMI:</strong> ₹{selectedLoan.emi?.toLocaleString()}
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <strong>Interest Rate:</strong> {selectedLoan.interestRate}%
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <strong>Payment Mode:</strong> {selectedLoan.paymentMode}
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <strong>Status:</strong> 
+                        <span className={`badge ${
+                          selectedLoan.status === 'Active' ? 'bg-success' :
+                          selectedLoan.status === 'Closed' ? 'bg-secondary' :
+                          'bg-warning'
+                        } ms-2`}>
+                          {selectedLoan.status}
+                        </span>
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <strong>Start Date:</strong> {new Date(selectedLoan.startDate).toLocaleDateString()}
+                      </div>
+                      <div className="col-md-6 mb-3">
+                        <strong>End Date:</strong> {new Date(selectedLoan.endDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Documents Section */}
+                <div className="card">
+                  <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0">Documents</h5>
+                  </div>
+                  <div className="card-body">
+                    {/* Add Document Form */}
+                    <div className="row mb-4">
+                      <div className="col-md-4">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Document name"
+                          value={newDocument.name}
+                          onChange={(e) => setNewDocument({...newDocument, name: e.target.value})}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <select
+                          className="form-select"
+                          value={newDocument.type}
+                          onChange={(e) => setNewDocument({...newDocument, type: e.target.value})}
+                        >
+                          <option value="ID Proof">ID Proof</option>
+                          <option value="Address Proof">Address Proof</option>
+                          <option value="Income Certificate">Income Certificate</option>
+                          <option value="Agreement">Agreement</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <input
+                          id="document-file-input"
+                          type="file"
+                          className="form-control"
+                          onChange={handleDocumentFileChange}
+                        />
+                      </div>
+                      <div className="col-md-2">
+                        <button 
+                          className="btn btn-primary w-100"
+                          onClick={handleAddDocument}
+                          disabled={!newDocument.file}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Documents List */}
+                    {documents.length > 0 ? (
+                      <div className="table-responsive">
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th>Name</th>
+                              <th>Type</th>
+                              <th>Preview</th>
+                              <th>Uploaded</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {documents.map(doc => (
+                              <tr key={doc.id}>
+                                <td>{doc.name}</td>
+                                <td>{doc.type}</td>
+                                <td>
+                                  {doc.fileContent && isImageFile(doc.fileName || doc.name) ? (
+                                    <img 
+                                      src={doc.fileContent} 
+                                      alt={doc.name}
+                                      className="img-thumbnail"
+                                      style={{ width: '50px', height: '50px', objectFit: 'cover', cursor: 'pointer' }}
+                                      onClick={() => handleViewDocument(doc)}
+                                    />
+                                  ) : (
+                                    <i className="fas fa-file-alt fa-2x text-muted"></i>
+                                  )}
+                                </td>
+                                <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
+                                <td>
+                                  <button 
+                                    className="btn btn-sm btn-light-primary me-1"
+                                    onClick={() => downloadDocument(doc)}
+                                    title="Download"
+                                  >
+                                    <i className="fas fa-download"></i>
+                                  </button>
+                                  <button 
+                                    className="btn btn-sm btn-light-info me-1"
+                                    onClick={() => handleViewDocument(doc)}
+                                    title="View"
+                                  >
+                                    <i className="fas fa-eye"></i>
+                                  </button>
+                                  <button 
+                                    className="btn btn-sm btn-light-danger"
+                                    onClick={() => handleDeleteDocument(doc.id)}
+                                    title="Delete"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted">No documents uploaded yet</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={closeProfileModal}
+                >
+                  Close
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={handleSaveProfile}
+                >
+                  Save Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {viewingDocument && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{viewingDocument.name}</h5>
+                <button 
+                  type="button" 
+                  className="btn-close"
+                  onClick={closeDocumentModal}
+                ></button>
+              </div>
+              <div className="modal-body text-center">
+                {viewingDocument.fileContent && isImageFile(viewingDocument.fileName || viewingDocument.name) ? (
+                  <img 
+                    src={viewingDocument.fileContent} 
+                    alt={viewingDocument.name}
+                    className="img-fluid"
+                    style={{ maxHeight: '70vh' }}
+                  />
+                ) : (
+                  <div className="p-5">
+                    <i className="fas fa-file-alt fa-5x text-muted mb-3"></i>
+                    <h4>{viewingDocument.name}</h4>
+                    <p className="text-muted">This document cannot be previewed. Please download to view.</p>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={closeDocumentModal}
+                >
+                  Close
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={() => downloadDocument(viewingDocument)}
+                >
+                  Download
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LoanRecords;

@@ -1,0 +1,77 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* Professional, Clean Money Lending Dashboard */
+:root {
+  --primary-color: #2c3e50;
+  --secondary-color: #34495e;
+  --success-color: #27ae60;
+  --danger-color: #e74c3c;
+  --warning-color: #f39c12;
+  --info-color: #3498db;
+  --light-gray: #f8f9fa;
+  --medium-gray: #6c757d;
+  --border-color: #e9ecef;
+  --text-color: #2c3e50;
+  --white: #ffffff;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #f8f9fa;
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+.sidebar {
+  min-height: 100vh;
+  background-color: var(--white);
+  border-right: 1px solid var(--border-color);
+  box-shadow: 0 0 10px rgba(0,0,0,0.05);
+}
+
+.navbar-custom {
+  background-color: var(--white);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.active-nav {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  border-radius: 6px;
+}
+
+.stat-card {
+  transition: all 0.3s ease;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.table-container {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  border: none;
+}
+
+.card {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+}

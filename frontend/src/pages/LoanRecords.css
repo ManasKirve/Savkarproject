@@ -1,0 +1,54 @@
+.btn-light-primary {
+  color: #1565c0;
+  background-color: #e3f2fd;
+  border: none;
+}
+
+.btn-light-primary:hover {
+  background-color: #bbdefb;
+  color: #0d47a1;
+}
+
+.btn-light-danger {
+  color: #d32f2f;
+  background-color: #ffebee;
+  border: none;
+}
+
+.btn-light-danger:hover {
+  background-color: #ffcdd2;
+  color: #b71c1c;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon:hover {
+  transform: translateY(-2px);
+}
+
+.table th {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.progress {
+  background-color: #f1f5f9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  transition: width 0.6s ease;
+}
