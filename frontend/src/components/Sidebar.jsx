@@ -24,7 +24,7 @@ const Sidebar = ({ isCollapsed }) => {
     { 
       title: "Loan Calculator", 
       url: "/loan-calculator", 
-      icon: "fas fa-balance-scale",
+      icon: "fas fa-calculator",
       description: "Loan Calculation"
     },
   ];
@@ -68,9 +68,6 @@ const Sidebar = ({ isCollapsed }) => {
 
       {/* Navigation Menu */}
       <div className="p-3">
-        <div className="mb-3">
-          <small className="text-muted text-uppercase fw-bold">Navigation</small>
-        </div>
         <div className="list-group list-group-flush">
           {menuItems.map((item) => (
             <NavLink
@@ -99,31 +96,8 @@ const Sidebar = ({ isCollapsed }) => {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="p-3">
-        <div className="mb-3">
-          <small className="text-muted text-uppercase fw-bold">Quick Actions</small>
-        </div>
-        <div className="list-group list-group-flush">
-          {quickActions.map((action) => (
-            <NavLink
-              key={action.title}
-              to={action.url}
-              className="list-group-item list-group-item-action border-0 rounded mb-1"
-            >
-              <div className="d-flex align-items-center">
-                <i className={`${action.icon} ${action.color} me-3`} style={{ width: '16px' }}></i>
-                {!isCollapsed && (
-                  <span className="fw-medium">{action.title}</span>
-                )}
-              </div>
-            </NavLink>
-          ))}
-        </div>
-      </div>
-
       {/* Footer */}
-      <div className="mt-auto p-3 border-top" style={{ position: 'absolute', bottom: '20px', left: '0', right: '0' }}>
+      <div className="pt-1 pb-3 border-top" style={{ position: 'absolute', bottom: '20px', left: '0', right: '0' }}>
         {!isCollapsed && (
           <div className="text-center">
             <p className="small text-muted mb-0">© 2024 Money Lender Pro</p>

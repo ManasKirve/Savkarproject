@@ -8,6 +8,9 @@ const LoanCalculator = () => {
   const [missedPaymentPenalty, setMissedPaymentPenalty] = useState(5);
   const [amortizationSchedule, setAmortizationSchedule] = useState([]);
   const [loanDate, setLoanDate] = useState(new Date().toISOString().split('T')[0]);
+  const [editRowIndex, setEditRowIndex] = useState(null);
+  const [editedTotalAmount, setEditedTotalAmount] = useState('');
+  const [editField, setEditField] = useState(''); // 'totalAmount' only now
 
   useEffect(() => {
     calculateLoan();
@@ -56,6 +59,8 @@ const LoanCalculator = () => {
     }
     
     setAmortizationSchedule(schedule);
+    setEditRowIndex(null);
+    setEditField('');
   };
 
   const handleMissedPayment = (month) => {
@@ -100,6 +105,84 @@ const LoanCalculator = () => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-IN');
+  };
+
+  const handleEditField = (index, field) => {
+    if (field === 'totalAmount') {
+      setEditRowIndex(index);
+      setEditField(field);
+      setEditedTotalAmount(amortizationSchedule[index].totalAmount);
+    }
+  };
+
+  const handleSaveTotalAmount = (index) => {
+    const updatedSchedule = [...amortizationSchedule];
+    const newTotalAmount = Math.max(0, parseFloat(editedTotalAmount));
+    const monthlyRate = interestRate / 100;
+    
+    // Get current row values
+    const currentRow = updatedSchedule[index];
+    const previousBalance = index === 0 ? loanAmount : parseFloat(updatedSchedule[index - 1].balance);
+    
+    // Calculate interest payment (doesn't change)
+    const interestPayment = parseFloat(currentRow.interest);
+    
+    // Calculate new principal payment based on edited total amount
+    const principalPayment = Math.max(0, newTotalAmount - interestPayment);
+    
+    // Update total amount and principal for this month
+    updatedSchedule[index].totalAmount = newTotalAmount.toFixed(2);
+    updatedSchedule[index].principal = principalPayment.toFixed(2);
+    
+    // Calculate new balance
+    const newBalance = Math.max(0, previousBalance - principalPayment);
+    updatedSchedule[index].balance = newBalance.toFixed(2);
+    
+    // If balance is zero, remove all subsequent rows
+    if (newBalance === 0) {
+      const trimmedSchedule = updatedSchedule.slice(0, index + 1);
+      setAmortizationSchedule(trimmedSchedule);
+      setEditRowIndex(null);
+      setEditField('');
+      return;
+    }
+    
+    // Recalculate future months
+    let currentBalance = newBalance;
+    
+    for (let i = index + 1; i < updatedSchedule.length; i++) {
+      const futureInterestPayment = currentBalance * monthlyRate;
+      const futurePrincipalPayment = parseFloat(updatedSchedule[i].payment) - futureInterestPayment;
+      
+      currentBalance -= futurePrincipalPayment;
+      
+      updatedSchedule[i].interest = futureInterestPayment.toFixed(2);
+      updatedSchedule[i].principal = futurePrincipalPayment.toFixed(2);
+      updatedSchedule[i].balance = Math.max(0, currentBalance).toFixed(2);
+      
+      // If we reach zero balance, remove all subsequent rows
+      if (currentBalance <= 0) {
+        const trimmedSchedule = updatedSchedule.slice(0, i + 1);
+        setAmortizationSchedule(trimmedSchedule);
+        setEditRowIndex(null);
+        setEditField('');
+        return;
+      }
+    }
+    
+    setAmortizationSchedule(updatedSchedule);
+    setEditRowIndex(null);
+    setEditField('');
+  };
+
+  const handleInputChange = (e) => {
+    setEditedTotalAmount(e.target.value);
+  };
+  
+  const handleSaveField = (index) => {
+    if (editField === 'totalAmount') {
+      handleSaveTotalAmount(index);
+    }
   };
 
   return (
@@ -195,6 +278,7 @@ const LoanCalculator = () => {
               <h2 className="card-title h5 mb-2">Amortization Schedule</h2>
               <p className="text-muted mb-3 small">
                 Click on any month to toggle between missed and paid payment. A missed payment adds {missedPaymentPenalty}% penalty to remaining balance.
+                Double-click on Total Amount column to edit values.
               </p>
               
               <div className="table-responsive" style={{ maxHeight: '550px' }}>
@@ -211,7 +295,7 @@ const LoanCalculator = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {amortizationSchedule.map((row) => (
+                    {amortizationSchedule.map((row, index) => (
                       <tr 
                         key={row.month}
                         onClick={() => handleMissedPayment(row.month)}
@@ -222,7 +306,35 @@ const LoanCalculator = () => {
                         <td>{formatDate(row.dueDate)}</td>
                         <td>{row.principal}</td>
                         <td>{row.interest}</td>
-                        <td>{row.totalAmount}</td>
+                        <td 
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            handleEditField(index, 'totalAmount');
+                          }}
+                        >
+                          {editRowIndex === index && editField === 'totalAmount' ? (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={editedTotalAmount}
+                                onChange={handleInputChange}
+                                onBlur={() => handleSaveField(index)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleSaveField(index);
+                                  } else if (e.key === 'Escape') {
+                                    setEditRowIndex(null);
+                                    setEditField('');
+                                  }
+                                }}
+                                autoFocus
+                              />
+                            </div>
+                          ) : (
+                            row.totalAmount
+                          )}
+                        </td>
                         <td>{row.balance}</td>
                         <td>
                           <span className={`badge ${row.missedPayment ? 'bg-danger' : 'bg-success'}`}>
@@ -242,4 +354,4 @@ const LoanCalculator = () => {
   )
 }
 
-export default LoanCalculator;
+export default LoanCalculator

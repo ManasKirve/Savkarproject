@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
-
+import React, { useState } from "react";
 
 const Navbar = ({ toggleSidebar }) => {
   return (
     <nav className="navbar navbar-expand-lg navbar-light navbar-custom fixed-top">
       <div className="container-fluid">
-        <button 
+        <button
           className="btn btn-outline-secondary navbar-toggle-btn me-3"
           onClick={toggleSidebar}
-          type="button"
-        >
+          type="button">
           <i className="fas fa-bars"></i>
         </button>
-        
+
         <div className="d-flex align-items-center navbar-brand-section">
           <h4 className="navbar-title mb-0 mx-3">Money Lending Dashboard</h4>
           <select className="form-select branch-select ms-3">
@@ -23,13 +21,16 @@ const Navbar = ({ toggleSidebar }) => {
         </div>
 
         <div className="d-flex align-items-center navbar-actions">
-          <button className="btn btn-outline-secondary notification-btn me-2 position-relative">
-            <i className="fas fa-bell"></i>
-            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
-              3
-            </span>
+          <button
+            className="btn btn-outline-secondary border border-secondary logout-btn me-2 d-flex flex-column align-items-center justify-content-center btn-sm"
+            onClick={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("userData");
+              window.location.href = "/login";
+            }}>
+            <i className="fas fa-sign-out-alt"></i> <br /> Logout
           </button>
-          <button className="btn btn-outline-secondary user-btn">
+          <button className="btn btn-outline-secondary border border-secondary user-btn d-flex flex-column align-items-center justify-content-center">
             <i className="fas fa-user"></i>
           </button>
         </div>
