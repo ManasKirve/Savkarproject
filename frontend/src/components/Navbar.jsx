@@ -22,16 +22,13 @@ const Navbar = ({ toggleSidebar }) => {
 
         <div className="d-flex align-items-center navbar-actions">
           <button
-            className="btn btn-outline-secondary border border-secondary logout-btn me-2 d-flex flex-column align-items-center justify-content-center btn-sm"
+            className="btn btn-outline-secondary border border-secondary user-btn d-flex flex-column align-items-center justify-content-center me-2"
             onClick={() => {
               localStorage.removeItem("token");
               localStorage.removeItem("userData");
               window.location.href = "/login";
             }}>
-            <i className="fas fa-sign-out-alt"></i> <br /> Logout
-          </button>
-          <button className="btn btn-outline-secondary border border-secondary user-btn d-flex flex-column align-items-center justify-content-center">
-            <i className="fas fa-user"></i>
+            <i className="fas fa-sign-out-alt"></i> 
           </button>
         </div>
       </div>
