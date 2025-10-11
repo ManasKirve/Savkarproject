@@ -1,6 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = ({ toggleSidebar }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check for authentication on component mount
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/");
+    }
+
+    // Prevent going back after logout
+    window.history.pushState(null, "", window.location.href);
+    window.onpopstate = function () {
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    return () => {
+      window.onpopstate = null;
+    };
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userData");
+    navigate("/login", { replace: true });
+  };
+
   return (
     <nav className="navbar navbar-expand-lg navbar-light navbar-custom fixed-top">
       <div className="container-fluid">
@@ -23,11 +50,7 @@ const Navbar = ({ toggleSidebar }) => {
         <div className="d-flex align-items-center navbar-actions">
           <button
             className="btn btn-outline-secondary border border-secondary user-btn d-flex flex-column align-items-center justify-content-center me-2"
-            onClick={() => {
-              localStorage.removeItem("token");
-              localStorage.removeItem("userData");
-              window.location.href = "/login";
-            }}>
+            onClick={handleLogout}>
             <i className="fas fa-sign-out-alt"></i> 
           </button>
         </div>

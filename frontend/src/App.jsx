@@ -1,15 +1,69 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import LoanRecords from './pages/LoanRecords';
 import LegalNotices from './pages/LegalNotices';
-import './App.css';
 import LoanCalculator from './pages/LoanCalculator';
+import Login from './pages/Login';
+import './App.css';
 
 const queryClient = new QueryClient();
+
+// ✅ Protected route component
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const location = useLocation();
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+const AppLayout = ({ sidebarCollapsed, toggleSidebar }) => {
+  return (
+    <div className="app">
+      <Navbar toggleSidebar={toggleSidebar} />
+      <Sidebar isCollapsed={sidebarCollapsed} />
+      
+      <div 
+        className="main-content" 
+        style={{ 
+          marginLeft: sidebarCollapsed ? '80px' : '280px',
+          marginTop: '76px',
+          transition: 'margin-left 0.3s'
+        }}
+      >
+        <Routes>
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/loan-records" element={
+            <ProtectedRoute>
+              <LoanRecords />
+            </ProtectedRoute>
+          } />
+          <Route path="/legal-notices" element={
+            <ProtectedRoute>
+              <LegalNotices />
+            </ProtectedRoute>
+          } />
+          <Route path="/loan-calculator" element={
+            <ProtectedRoute>
+              <LoanCalculator />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </div>
+    </div>
+  );
+};
 
 const App = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -21,26 +75,16 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="app">
-          <Navbar toggleSidebar={toggleSidebar} />
-          <Sidebar isCollapsed={sidebarCollapsed} />
+        <Routes>
+          {/* Redirect root to login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
           
-          <div 
-            className="main-content" 
-            style={{ 
-              marginLeft: sidebarCollapsed ? '80px' : '280px',
-              marginTop: '76px',
-              transition: 'margin-left 0.3s'
-            }}
-          >
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/loan-records" element={<LoanRecords />} />
-              <Route path="/legal-notices" element={<LegalNotices />} />
-              <Route path="/loan-calculator" element={<LoanCalculator />} />
-            </Routes>
-          </div>
-        </div>
+          {/* Login page */}
+          <Route path="/login" element={<Login />} />
+          
+          {/* App layout for protected pages */}
+          <Route path="*" element={<AppLayout sidebarCollapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />} />
+        </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   );

@@ -29,15 +29,6 @@ const Sidebar = ({ isCollapsed }) => {
     },
   ];
 
-  const quickActions = [
-    { 
-      title: "Add New Loan", 
-      url: "/loan-records?action=add", 
-      icon: "fas fa-plus",
-      color: "text-primary"
-    },
-  ];
-
   return (
     <div className={`sidebar ${isCollapsed ? 'collapsed' : ''} bg-light border-end`} 
          style={{ 
