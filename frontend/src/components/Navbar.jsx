@@ -41,9 +41,8 @@ const Navbar = ({ toggleSidebar }) => {
         <div className="d-flex align-items-center navbar-brand-section">
           <h4 className="navbar-title mb-0 mx-3">Money Lending Dashboard</h4>
           <select className="form-select branch-select ms-3">
+            <option value="branch2">Money Lending</option>
             <option value="sidhivinayak">Sidhivinayak Finance</option>
-            <option value="branch2">Branch Office 2</option>
-            <option value="branch3">Branch Office 3</option>
           </select>
         </div>
 

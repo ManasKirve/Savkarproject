@@ -5,7 +5,7 @@ const Sidebar = ({ isCollapsed }) => {
   const menuItems = [
     { 
       title: "Dashboard", 
-      url: "/", 
+      url: "/dashboard", 
       icon: "fas fa-tachometer-alt",
       description: "Overview & Analytics"
     },
