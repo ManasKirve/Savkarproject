@@ -25,7 +25,13 @@ const Sidebar = ({ isCollapsed }) => {
       title: "Loan Calculator", 
       url: "/loan-calculator", 
       icon: "fas fa-calculator",
-      description: "Loan Calculation"
+      description: "Reduced Loan Calculation"
+    },
+     { 
+      title: "Loan Calculator", 
+      url: "/Interest-calculator", 
+      icon: "fas fa-calculator",
+      description: "Interest Loan Calculation"
     },
   ];
 

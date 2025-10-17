@@ -13,20 +13,23 @@ const Dashboard = () => {
     pendingAmount: 0
   });
 
+  // 🔹 Filter and Sort states
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc'); // asc | desc
+
   useEffect(() => {
     const fetchData = async () => {
       const loansData = LoanService.getAllLoans();
       setLoans(loansData);
-      
-      // Calculate statistics
+
       const totalLoans = loansData.length;
       const activeLoans = loansData.filter(loan => loan.status === 'Active').length;
       const pendingLoans = loansData.filter(loan => loan.status === 'Pending').length;
       const closedLoans = loansData.filter(loan => loan.status === 'Closed').length;
-      
+
       const totalAmount = loansData.reduce((sum, loan) => sum + (loan.totalLoan || 0), 0);
       const collectedAmount = loansData.reduce((sum, loan) => sum + (loan.paidAmount || 0), 0);
-      const remainingAmount = totalAmount - collectedAmount;
       const pendingAmount = loansData
         .filter(loan => loan.status === 'Pending')
         .reduce((sum, loan) => sum + ((loan.totalLoan || 0) - (loan.paidAmount || 0)), 0);
@@ -45,7 +48,31 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  const recentLoans = loans.slice(0, 5);
+  // 🔹 Apply Date Range Filter
+  const filteredLoans = loans.filter((loan) => {
+    if (!fromDate && !toDate) return true;
+    const loanDate = new Date(loan.startDate);
+    const from = fromDate ? new Date(fromDate) : null;
+    const to = toDate ? new Date(toDate) : null;
+
+    if (from && to) return loanDate >= from && loanDate <= to;
+    if (from) return loanDate >= from;
+    if (to) return loanDate <= to;
+    return true;
+  });
+
+  // 🔹 Sort by Date when column clicked
+  const sortByDate = () => {
+    const sorted = [...filteredLoans].sort((a, b) => {
+      const dateA = new Date(a.startDate);
+      const dateB = new Date(b.startDate);
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+    setLoans(sorted);
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const recentLoans = filteredLoans.slice(0, 5);
 
   return (
     <div className="container p-4 dashboard-container">
@@ -53,7 +80,7 @@ const Dashboard = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="dashboard-title">Dashboard Overview</h2>
-          <p className="dashboard-subtitle text-muted">
+          <p className="dashboard-subtitle text-muted m-0">
             Welcome back! Here's what's happening with your loans today.
           </p>
         </div>
@@ -61,14 +88,11 @@ const Dashboard = () => {
           <button className="btn btn-outline-primary btn-custom">
             <i className="fas fa-download me-2"></i>Export Report
           </button>
-          <button className="btn btn-primary btn-custom btn-primary-custom">
-            <i className="fas fa-plus me-2"></i>Add New Loan
-          </button>
         </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-md-3 mb-3">
           <div className="card stat-card stat-card-custom stat-card-primary">
             <div className="card-body stat-card-body">
@@ -135,7 +159,7 @@ const Dashboard = () => {
       </div>
 
       {/* Amount Statistics */}
-      <div className="row mb-4">
+      <div className="row">
         <div className="col-md-4 mb-3">
           <div className="card amount-card">
             <div className="card-body amount-card-body">
@@ -166,9 +190,41 @@ const Dashboard = () => {
 
       {/* Recent Loans Table */}
       <div className="card table-container-custom">
-        <div className="card-header table-header">
+        <div className="card-header table-header d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Recent Loans</h5>
+
+          {/* 🔍 Date Filter */}
+          <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center">
+              <label className="me-2 fw-medium">From:</label>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </div>
+            <div className="d-flex align-items-center">
+              <label className="me-2 fw-medium">To:</label>
+              <input
+                type="date"
+                className="form-control form-control-sm"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
+            <button
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => {
+                setFromDate('');
+                setToDate('');
+              }}
+            >
+              Clear
+            </button>
+          </div>
         </div>
+
         <div className="card-body table-body">
           <div className="table-responsive">
             <table className="table table-hover table-custom mb-0">
@@ -177,48 +233,76 @@ const Dashboard = () => {
                   <th>Customer Name</th>
                   <th>Amount</th>
                   <th>Interest Rate</th>
-                  <th>Start Date</th>
+                  {/* 🔹 Clickable Due Date Header */}
+                  <th
+                    style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    onClick={sortByDate}
+                  >
+                    Due Date{' '}
+                    <i
+                      className={`fas fa-sort-${
+                        sortOrder === 'asc' ? 'up' : 'down'
+                      } ms-1`}
+                    ></i>
+                  </th>
                   <th>Status</th>
                   <th>Progress</th>
                 </tr>
               </thead>
               <tbody>
-                {recentLoans.map((loan) => (
-                  <tr key={loan.id}>
-                    <td>
-                      <div>
-                        <div className="fw-medium">{loan.borrowerName}</div>
-                        <small className="text-muted">{loan.phoneNumber}</small>
-                      </div>
-                    </td>
-                    <td>₹{loan.totalLoan.toLocaleString()}</td>
-                    <td>{loan.interestRate}%</td>
-                    <td>{new Date(loan.startDate).toLocaleDateString()}</td>
-                    <td>
-                      <span className={`badge badge-custom ${
-                        loan.status === 'Active' ? 'badge-success' :
-                        loan.status === 'Closed' ? 'badge-info' :
-                        loan.status === 'Pending' ? 'badge-danger' : 'badge-secondary'
-                      }`}>
-                        {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="progress progress-custom">
-                        <div 
-                          className={`progress-bar progress-bar-custom ${
-                            loan.status === 'Closed' ? 'progress-bar-success' :
-                            loan.status === 'Pending' ? 'progress-bar-danger' : 'progress-bar-primary'
+                {recentLoans.length > 0 ? (
+                  recentLoans.map((loan) => (
+                    <tr key={loan.id}>
+                      <td>
+                        <div>
+                          <div className="fw-medium">{loan.borrowerName}</div>
+                          <small className="text-muted">{loan.phoneNumber}</small>
+                        </div>
+                      </td>
+                      <td>₹{loan.totalLoan.toLocaleString()}</td>
+                      <td>{loan.interestRate}%</td>
+                      <td>{new Date(loan.startDate).toLocaleDateString('en-GB')}</td>
+                      <td>
+                        <span
+                          className={`badge badge-custom ${
+                            loan.status === 'Active'
+                              ? 'badge-success'
+                              : loan.status === 'Closed'
+                              ? 'badge-info'
+                              : loan.status === 'Pending'
+                              ? 'badge-danger'
+                              : 'badge-secondary'
                           }`}
-                          style={{ width: `${(loan.paidAmount / loan.totalLoan) * 100}%` }}
-                        ></div>
-                      </div>
-                      <small className="progress-text">
-                        {Math.round((loan.paidAmount / loan.totalLoan) * 100)}% paid
-                      </small>
+                        >
+                          {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="progress progress-custom">
+                          <div
+                            className={`progress-bar progress-bar-custom ${
+                              loan.status === 'Closed'
+                                ? 'progress-bar-success'
+                                : loan.status === 'Pending'
+                                ? 'progress-bar-danger'
+                                : 'progress-bar-primary'
+                            }`}
+                            style={{ width: `${(loan.paidAmount / loan.totalLoan) * 100}%` }}
+                          ></div>
+                        </div>
+                        <small className="progress-text">
+                          {Math.round((loan.paidAmount / loan.totalLoan) * 100)}% paid
+                        </small>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center text-muted py-3">
+                      No loans found for selected dates.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

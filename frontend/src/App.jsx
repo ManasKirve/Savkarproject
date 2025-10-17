@@ -9,6 +9,7 @@ import LegalNotices from './pages/LegalNotices';
 import LoanCalculator from './pages/LoanCalculator';
 import Login from './pages/Login';
 import './App.css';
+import InterestCalculator from './pages/InterestCalculator';
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,11 @@ const AppLayout = ({ sidebarCollapsed, toggleSidebar }) => {
           <Route path="/loan-calculator" element={
             <ProtectedRoute>
               <LoanCalculator />
+            </ProtectedRoute>
+          } />
+           <Route path="/Interest-calculator" element={
+            <ProtectedRoute>
+              <InterestCalculator />
             </ProtectedRoute>
           } />
         </Routes>
