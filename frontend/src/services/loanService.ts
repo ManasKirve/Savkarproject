@@ -265,7 +265,7 @@ export class LoanService {
     return documents.filter(doc => doc.loanId === loanId);
   }
 
-  // Dashboard Summary
+
   static getDashboardSummary(): DashboardSummary {
     const loans = this.getAllLoans();
     
