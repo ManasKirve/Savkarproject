@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LoanService } from '../services/loanService';
+import ApiService from '../services/apiService'; // Import the new API service
 import './LoanRecords.css';
 
 const LoanRecords = () => {
@@ -41,6 +41,8 @@ const LoanRecords = () => {
   });
   const [profileImageFile, setProfileImageFile] = useState(null);
   const [viewingDocument, setViewingDocument] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadLoans();
@@ -53,8 +55,7 @@ const LoanRecords = () => {
   // Load documents when a loan is selected
   useEffect(() => {
     if (selectedLoan) {
-      const loanDocuments = LoanService.getDocumentsByLoanId(selectedLoan.id);
-      setDocuments(loanDocuments);
+      loadDocuments(selectedLoan.id);
       setProfileFormData({
         profilePhoto: selectedLoan.profilePhoto || '',
         occupation: selectedLoan.occupation || '',
@@ -64,13 +65,27 @@ const LoanRecords = () => {
   }, [selectedLoan]);
 
   const loadLoans = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      LoanService.initializeData();
-      const loansData = LoanService.getAllLoans();
+      const loansData = await ApiService.getAllLoans();
       setLoans(loansData || []);
     } catch (error) {
       console.error('Error loading loans:', error);
+      setError('Failed to load loans. Please try again later.');
       setLoans([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDocuments = async (loanId) => {
+    try {
+      const loanDocuments = await ApiService.getDocumentsByLoanId(loanId);
+      setDocuments(loanDocuments);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      setDocuments([]);
     }
   };
 
@@ -95,12 +110,16 @@ const LoanRecords = () => {
     e.preventDefault();
     
     const loanData = {
-      ...formData,
+      borrowerName: formData.borrowerName,
+      phoneNumber: formData.phoneNumber,
       totalLoan: parseFloat(formData.totalLoan) || 0,
       paidAmount: parseFloat(formData.paidAmount) || 0,
       emi: parseFloat(formData.emi) || 0,
       interestRate: parseFloat(formData.interestRate) || 0,
-      paidAmount: editingLoan ? parseFloat(formData.paidAmount) || 0 : 0
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      paymentMode: formData.paymentMode,
+      status: formData.status
     };
 
     // Calculate progress percentage
@@ -113,14 +132,18 @@ const LoanRecords = () => {
       loanData.status = 'Active';
     }
 
-    if (editingLoan) {
-      LoanService.updateLoan(editingLoan.id, loanData);
-    } else {
-      LoanService.createLoan(loanData);
+    try {
+      if (editingLoan) {
+        await ApiService.updateLoan(editingLoan.id, loanData);
+      } else {
+        await ApiService.createLoan(loanData);
+      }
+      loadLoans();
+      resetForm();
+    } catch (error) {
+      console.error('Error saving loan:', error);
+      alert('Failed to save loan. Please try again.');
     }
-
-    loadLoans();
-    resetForm();
   };
 
   const resetForm = () => {
@@ -161,8 +184,13 @@ const LoanRecords = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this loan record?')) {
-      LoanService.deleteLoan(id);
-      loadLoans();
+      try {
+        await ApiService.deleteLoan(id);
+        loadLoans();
+      } catch (error) {
+        console.error('Error deleting loan:', error);
+        alert('Failed to delete loan. Please try again.');
+      }
     }
   };
 
@@ -209,50 +237,79 @@ const LoanRecords = () => {
     }
   };
 
-  const handleAddDocument = () => {
+  const handleAddDocument = async () => {
     if (!newDocument.file || newDocument.name.trim() === '') return;
     
-    // Convert file to base64 for storage
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      LoanService.createDocument({
-        loanId: selectedLoan.id,
-        name: newDocument.name,
-        type: newDocument.type,
-        fileContent: reader.result,
-        fileName: newDocument.fileName
-      });
-      
-      // Refresh documents
-      const updatedDocuments = LoanService.getDocumentsByLoanId(selectedLoan.id);
-      setDocuments(updatedDocuments);
-      
-      // Reset form
-      setNewDocument({ 
-        name: '', 
-        type: 'ID Proof', 
-        file: null,
-        fileName: '' 
-      });
-      document.getElementById('document-file-input').value = '';
-    };
-    reader.readAsDataURL(newDocument.file);
-  };
-
-  const handleDeleteDocument = (id) => {
-    LoanService.deleteDocument(id);
-    // Refresh documents
-    const updatedDocuments = LoanService.getDocumentsByLoanId(selectedLoan.id);
-    setDocuments(updatedDocuments);
-  };
-
-  const handleSaveProfile = () => {
-    // Convert profile image to base64 if a new file was selected
-    if (profileImageFile) {
+    try {
+      // Convert file to base64 for storage
       const reader = new FileReader();
-      reader.onloadend = () => {
-        LoanService.updateLoan(selectedLoan.id, {
-          profilePhoto: reader.result,
+      reader.onloadend = async () => {
+        await ApiService.createDocument({
+          loanId: selectedLoan.id,
+          name: newDocument.name,
+          type: newDocument.type,
+          fileContent: reader.result,
+          fileName: newDocument.fileName
+        });
+        
+        // Refresh documents
+        loadDocuments(selectedLoan.id);
+        
+        // Reset form
+        setNewDocument({ 
+          name: '', 
+          type: 'ID Proof', 
+          file: null,
+          fileName: '' 
+        });
+        document.getElementById('document-file-input').value = '';
+      };
+      reader.readAsDataURL(newDocument.file);
+    } catch (error) {
+      console.error('Error adding document:', error);
+      alert('Failed to add document. Please try again.');
+    }
+  };
+
+  const handleDeleteDocument = async (id) => {
+    try {
+      await ApiService.deleteDocument(id);
+      // Refresh documents
+      loadDocuments(selectedLoan.id);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Failed to delete document. Please try again.');
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    try {
+      // Convert profile image to base64 if a new file was selected
+      if (profileImageFile) {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          await ApiService.updateLoan(selectedLoan.id, {
+            profilePhoto: reader.result,
+            occupation: profileFormData.occupation,
+            address: profileFormData.address
+          });
+          
+          // Update the selectedLoan in state to reflect changes
+          setSelectedLoan({
+            ...selectedLoan,
+            profilePhoto: reader.result,
+            occupation: profileFormData.occupation,
+            address: profileFormData.address
+          });
+          
+          // Also update the loans list to reflect changes in the table
+          loadLoans();
+        };
+        reader.readAsDataURL(profileImageFile);
+      } else {
+        // Update without changing the profile photo
+        await ApiService.updateLoan(selectedLoan.id, {
+          profilePhoto: profileFormData.profilePhoto,
           occupation: profileFormData.occupation,
           address: profileFormData.address
         });
@@ -260,33 +317,17 @@ const LoanRecords = () => {
         // Update the selectedLoan in state to reflect changes
         setSelectedLoan({
           ...selectedLoan,
-          profilePhoto: reader.result,
+          profilePhoto: profileFormData.profilePhoto,
           occupation: profileFormData.occupation,
           address: profileFormData.address
         });
         
         // Also update the loans list to reflect changes in the table
         loadLoans();
-      };
-      reader.readAsDataURL(profileImageFile);
-    } else {
-      // Update without changing the profile photo
-      LoanService.updateLoan(selectedLoan.id, {
-        profilePhoto: profileFormData.profilePhoto,
-        occupation: profileFormData.occupation,
-        address: profileFormData.address
-      });
-      
-      // Update the selectedLoan in state to reflect changes
-      setSelectedLoan({
-        ...selectedLoan,
-        profilePhoto: profileFormData.profilePhoto,
-        occupation: profileFormData.occupation,
-        address: profileFormData.address
-      });
-      
-      // Also update the loans list to reflect changes in the table
-      loadLoans();
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile. Please try again.');
     }
   };
 
@@ -321,6 +362,15 @@ const LoanRecords = () => {
   const closeDocumentModal = () => {
     setViewingDocument(null);
   };
+
+  // Add loading and error states
+  if (loading) {
+    return <div className="text-center py-5">Loading loans...</div>;
+  }
+
+  if (error) {
+    return <div className="alert alert-danger">{error}</div>;
+  }
 
   return (
     <div className="container-fluid py-4 px-4">

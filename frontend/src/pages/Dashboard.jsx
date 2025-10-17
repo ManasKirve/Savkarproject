@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LoanService } from '../services/loanService';
+import ApiService from '../services/apiService'; 
 
 const Dashboard = () => {
   const [loans, setLoans] = useState([]);
@@ -17,32 +17,42 @@ const Dashboard = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [sortOrder, setSortOrder] = useState('asc'); // asc | desc
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const loansData = LoanService.getAllLoans();
-      setLoans(loansData);
+      try {
+        setLoading(true);
+        const loansData = await ApiService.getAllLoans();
+        setLoans(loansData);
+  
+          const totalLoans = loansData.length;
+        const activeLoans = loansData.filter(loan => loan.status === 'Active').length;
+        const pendingLoans = loansData.filter(loan => loan.status === 'Pending').length;
+        const closedLoans = loansData.filter(loan => loan.status === 'Closed').length;
+  
+        const totalAmount = loansData.reduce((sum, loan) => sum + (loan.totalLoan || 0), 0);
+        const collectedAmount = loansData.reduce((sum, loan) => sum + (loan.paidAmount || 0), 0);
+          const pendingAmount = loansData
+          .filter(loan => loan.status === 'Pending')
+          .reduce((sum, loan) => sum + ((loan.totalLoan || 0) - (loan.paidAmount || 0)), 0);
 
-      const totalLoans = loansData.length;
-      const activeLoans = loansData.filter(loan => loan.status === 'Active').length;
-      const pendingLoans = loansData.filter(loan => loan.status === 'Pending').length;
-      const closedLoans = loansData.filter(loan => loan.status === 'Closed').length;
-
-      const totalAmount = loansData.reduce((sum, loan) => sum + (loan.totalLoan || 0), 0);
-      const collectedAmount = loansData.reduce((sum, loan) => sum + (loan.paidAmount || 0), 0);
-      const pendingAmount = loansData
-        .filter(loan => loan.status === 'Pending')
-        .reduce((sum, loan) => sum + ((loan.totalLoan || 0) - (loan.paidAmount || 0)), 0);
-
-      setStats({
-        totalLoans,
-        activeLoans,
-        pendingLoans,
-        closedLoans,
-        totalAmount,
-        collectedAmount,
-        pendingAmount
-      });
+        setStats({
+          totalLoans,
+          activeLoans,
+          pendingLoans,
+          closedLoans,
+          totalAmount,
+          collectedAmount,
+          pendingAmount
+        });
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
@@ -73,6 +83,29 @@ const Dashboard = () => {
   };
 
   const recentLoans = filteredLoans.slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="container p-4 dashboard-container">
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container p-4 dashboard-container">
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container p-4 dashboard-container">

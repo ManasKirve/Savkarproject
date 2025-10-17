@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LoanService } from '../services/loanService';
+import ApiService from '../services/apiService'; // Import the new API service
 
 const LegalNotices = () => {
   const [notices, setNotices] = useState([]);
@@ -18,6 +18,8 @@ const LegalNotices = () => {
     dueDate: '',
     description: ''
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadNotices();
@@ -29,13 +31,16 @@ const LegalNotices = () => {
 
   const loadNotices = async () => {
     try {
-      // Initialize data if it hasn't been initialized
-      LoanService.initializeData();
-      const noticesData = LoanService.getAllNotices();
+      setLoading(true);
+      setError(null);
+      const noticesData = await ApiService.getAllNotices();
       setNotices(noticesData || []);
     } catch (error) {
       console.error('Error loading notices:', error);
+      setError('Failed to load notices. Please try again later.');
       setNotices([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,20 +65,27 @@ const LegalNotices = () => {
     e.preventDefault();
     
     const noticeData = {
-      ...formData,
-      loanAmount: parseFloat(formData.loanAmount),
-      overdueAmount: parseFloat(formData.overdueAmount),
-      status: 'pending'
+      borrowerName: formData.customerName,
+      borrowerId: '', // We'll leave this empty for now, or you can fetch it based on phone
+      borrowerName: formData.customerName,
+      amountDue: parseFloat(formData.overdueAmount),
+      noticeDate: formData.issueDate,
+      status: 'Pending',
+      description: formData.description
     };
 
-    if (editingNotice) {
-      LoanService.updateNotice(editingNotice.id, noticeData);
-    } else {
-      LoanService.createNotice(noticeData);
+    try {
+      if (editingNotice) {
+        await ApiService.updateNotice(editingNotice.id, noticeData);
+      } else {
+        await ApiService.createNotice(noticeData);
+      }
+      loadNotices();
+      resetForm();
+    } catch (error) {
+      console.error('Error saving notice:', error);
+      alert('Failed to save notice. Please try again.');
     }
-
-    loadNotices();
-    resetForm();
   };
 
   const resetForm = () => {
@@ -108,8 +120,13 @@ const LegalNotices = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this legal notice?')) {
-      LoanService.deleteNotice(id);
-      loadNotices();
+      try {
+        await ApiService.deleteNotice(id);
+        loadNotices();
+      } catch (error) {
+        console.error('Error deleting notice:', error);
+        alert('Failed to delete notice. Please try again.');
+      }
     }
   };
 
@@ -124,13 +141,34 @@ const LegalNotices = () => {
 
   const getStatusClass = (status) => {
     switch (status) {
-      case 'pending': return 'bg-light text-warning border border-warning';
-      case 'sent': return 'bg-light text-info border border-info';
-      case 'responded': return 'bg-light text-success border border-success';
-      case 'legal_action': return 'bg-light text-secondary border border-secondary';
+      case 'Pending': return 'bg-light text-warning border border-warning';
+      case 'Resolved': return 'bg-light text-success border border-success';
       default: return 'bg-light text-secondary border border-secondary';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="container-fluid p-4" style={{ paddingTop: '20px' }}>
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3">Loading legal notices...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container-fluid p-4" style={{ paddingTop: '20px' }}>
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid p-4" style={{ paddingTop: '20px' }}>
@@ -149,7 +187,7 @@ const LegalNotices = () => {
         <div className="col-md-3 mb-3">
           <div className="card stat-card border-warning">
             <div className="card-body text-center">
-              <h3 className="text-warning">{notices.filter(n => n.status === 'pending').length}</h3>
+              <h3 className="text-warning">{notices.filter(n => n.status === 'Pending').length}</h3>
               <h6 className="text-muted">Pending Notices</h6>
             </div>
           </div>
@@ -157,7 +195,7 @@ const LegalNotices = () => {
         <div className="col-md-3 mb-3">
           <div className="card stat-card border-info">
             <div className="card-body text-center">
-              <h3 className="text-info">{notices.filter(n => n.status === 'sent').length}</h3>
+              <h3 className="text-info">{notices.filter(n => n.status === 'Sent').length}</h3>
               <h6 className="text-muted">Sent Notices</h6>
             </div>
           </div>
@@ -165,7 +203,7 @@ const LegalNotices = () => {
         <div className="col-md-3 mb-3">
           <div className="card stat-card border-success">
             <div className="card-body text-center">
-              <h3 className="text-success">{notices.filter(n => n.status === 'responded').length}</h3>
+              <h3 className="text-success">{notices.filter(n => n.status === 'Responded').length}</h3>
               <h6 className="text-muted">Responded</h6>
             </div>
           </div>
@@ -205,10 +243,8 @@ const LegalNotices = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="sent">Sent</option>
-                <option value="responded">Responded</option>
-                <option value="legal_action">Legal Action</option>
+                <option value="Pending">Pending</option>
+                <option value="Resolved">Resolved</option>
               </select>
             </div>
             <div className="col-md-3">
