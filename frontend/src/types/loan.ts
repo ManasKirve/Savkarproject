@@ -1,4 +1,4 @@
-// types/loan.ts
+
 
 export interface Document {
   id: string;

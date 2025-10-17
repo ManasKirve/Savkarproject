@@ -1,11 +1,13 @@
-
+// src/services/apiService.js
 
 const API_BASE_URL = 'http://localhost:8000'; 
 
 class ApiService {
- 
+  // Helper method for making API requests
   static async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
+    console.log(`ApiService: Making request to ${url}`);
+    
     const defaultOptions = {
       headers: {
         'Content-Type': 'application/json',
@@ -14,12 +16,33 @@ class ApiService {
 
     const config = { ...defaultOptions, ...options };
     
+    // Convert request body keys from camelCase -> snake_case for backend compatibility
+    const decamelize = (obj) => {
+      if (Array.isArray(obj)) return obj.map(decamelize);
+      if (obj && typeof obj === 'object') {
+        return Object.keys(obj).reduce((acc, key) => {
+          const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+          acc[snakeKey] = decamelize(obj[key]);
+          return acc;
+        }, {});
+      }
+      return obj;
+    };
+
     if (config.body && typeof config.body === 'object') {
-      config.body = JSON.stringify(config.body);
+      try {
+        config.body = JSON.stringify(decamelize(config.body));
+      } catch (e) {
+        // Fallback to raw stringify on failure
+        config.body = JSON.stringify(config.body);
+      }
     }
 
     try {
+      console.log(`ApiService: Sending request to ${url}`);
       const response = await fetch(url, config);
+      
+      console.log(`ApiService: Response status: ${response.status}`);
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
@@ -27,18 +50,43 @@ class ApiService {
       
       // Handle empty responses (like for DELETE requests)
       if (response.status === 204) {
+        console.log("ApiService: Empty response, returning null");
         return null;
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log(`ApiService: Response data for ${url}:`, data);
+
+      // Normalize snake_case keys from backend to camelCase for frontend usage
+      const camelize = (obj) => {
+        if (Array.isArray(obj)) {
+          return obj.map(camelize);
+        } else if (obj && typeof obj === 'object') {
+          return Object.keys(obj).reduce((acc, key) => {
+            const camelKey = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+            acc[camelKey] = camelize(obj[key]);
+            return acc;
+          }, {});
+        }
+        return obj;
+      };
+
+      return camelize(data);
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error(`ApiService: Request failed for ${url}:`, error);
       throw error;
     }
   }
 
+  // Dashboard
+  static async getDashboardSummary() {
+    console.log("ApiService: Getting dashboard summary");
+    return this.request('/dashboard/summary');
+  }
+
   // Loan Records
   static async getAllLoans() {
+    console.log("ApiService: Getting all loans");
     return this.request('/loans');
   }
 
@@ -81,7 +129,7 @@ class ApiService {
     });
   }
 
-  
+  // Transactions
   static async getAllTransactions() {
     return this.request('/transactions');
   }
@@ -93,7 +141,7 @@ class ApiService {
     });
   }
 
- 
+  // Documents
   static async getAllDocuments() {
     return this.request('/documents');
   }
@@ -115,12 +163,7 @@ class ApiService {
     });
   }
 
-
-  static async getDashboardSummary() {
-    return this.request('/dashboard/summary');
-  }
-
-
+  // Defaulters
   static async getDefaulters() {
     return this.request('/loans/defaulters');
   }

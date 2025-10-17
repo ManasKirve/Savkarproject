@@ -7,9 +7,9 @@ import Dashboard from './pages/Dashboard';
 import LoanRecords from './pages/LoanRecords';
 import LegalNotices from './pages/LegalNotices';
 import LoanCalculator from './pages/LoanCalculator';
+import InterestCalculator from './pages/InterestCalculator';
 import Login from './pages/Login';
 import './App.css';
-import InterestCalculator from './pages/InterestCalculator';
 
 const queryClient = new QueryClient();
 
@@ -25,7 +25,7 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Layout component that includes Navbar and Sidebar
+// Layout component for protected routes
 const AppLayout = ({ sidebarCollapsed, toggleSidebar }) => {
   return (
     <div className="app">
@@ -42,33 +42,6 @@ const AppLayout = ({ sidebarCollapsed, toggleSidebar }) => {
       >
         {/* This Outlet will render the matched child route */}
         <Outlet />
-        <Routes>
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/loan-records" element={
-            <ProtectedRoute>
-              <LoanRecords />
-            </ProtectedRoute>
-          } />
-          <Route path="/legal-notices" element={
-            <ProtectedRoute>
-              <LegalNotices />
-            </ProtectedRoute>
-          } />
-          <Route path="/loan-calculator" element={
-            <ProtectedRoute>
-              <LoanCalculator />
-            </ProtectedRoute>
-          } />
-           <Route path="/Interest-calculator" element={
-            <ProtectedRoute>
-              <InterestCalculator />
-            </ProtectedRoute>
-          } />
-        </Routes>
       </div>
     </div>
   );
@@ -101,6 +74,7 @@ const App = () => {
             <Route path="/loan-records" element={<LoanRecords />} />
             <Route path="/legal-notices" element={<LegalNotices />} />
             <Route path="/loan-calculator" element={<LoanCalculator />} />
+            <Route path="/interest-calculator" element={<InterestCalculator />} />
           </Route>
           
           {/* 404 page - redirect to dashboard */}

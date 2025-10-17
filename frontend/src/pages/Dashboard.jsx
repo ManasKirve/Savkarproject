@@ -13,7 +13,7 @@ const Dashboard = () => {
     pendingAmount: 0
   });
 
-  // 🔹 Filter and Sort states
+  // Filter and Sort states
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [sortOrder, setSortOrder] = useState('asc'); // asc | desc
@@ -23,34 +23,36 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log("Dashboard: Starting to fetch data...");
         setLoading(true);
-        const loansData = await ApiService.getAllLoans();
-        setLoans(loansData);
-  
-          const totalLoans = loansData.length;
-        const activeLoans = loansData.filter(loan => loan.status === 'Active').length;
-        const pendingLoans = loansData.filter(loan => loan.status === 'Pending').length;
-        const closedLoans = loansData.filter(loan => loan.status === 'Closed').length;
-  
-        const totalAmount = loansData.reduce((sum, loan) => sum + (loan.totalLoan || 0), 0);
-        const collectedAmount = loansData.reduce((sum, loan) => sum + (loan.paidAmount || 0), 0);
-          const pendingAmount = loansData
-          .filter(loan => loan.status === 'Pending')
-          .reduce((sum, loan) => sum + ((loan.totalLoan || 0) - (loan.paidAmount || 0)), 0);
-
+        
+        // First get dashboard summary from the dedicated endpoint
+        console.log("Dashboard: Fetching dashboard summary...");
+        const dashboardData = await ApiService.getDashboardSummary();
+        console.log("Dashboard: Dashboard summary received:", dashboardData);
+        
+        // Update stats with the data from the dashboard summary endpoint
         setStats({
-          totalLoans,
-          activeLoans,
-          pendingLoans,
-          closedLoans,
-          totalAmount,
-          collectedAmount,
-          pendingAmount
+          totalLoans: dashboardData.activeRecords + dashboardData.pendingRecords + dashboardData.closingRecords,
+          activeLoans: dashboardData.activeRecords,
+          pendingLoans: dashboardData.pendingRecords,
+          closedLoans: dashboardData.closingRecords,
+          totalAmount: dashboardData.totalLoanIssued,
+          collectedAmount: dashboardData.recoveredAmount,
+          pendingAmount: dashboardData.pendingAmount
         });
+        
+        // Then get loans for the table
+        console.log("Dashboard: Fetching loans data...");
+        const loansData = await ApiService.getAllLoans();
+        console.log("Dashboard: Loans data received:", loansData);
+        setLoans(loansData);
+        
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
+        console.error('Dashboard: Error fetching dashboard data:', err);
         setError('Failed to load dashboard data. Please try again later.');
       } finally {
+        console.log("Dashboard: Setting loading to false");
         setLoading(false);
       }
     };
@@ -58,7 +60,7 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // 🔹 Apply Date Range Filter
+  // Apply Date Range Filter
   const filteredLoans = loans.filter((loan) => {
     if (!fromDate && !toDate) return true;
     const loanDate = new Date(loan.startDate);
@@ -71,7 +73,7 @@ const Dashboard = () => {
     return true;
   });
 
-  // 🔹 Sort by Date when column clicked
+  // Sort by Date when column clicked
   const sortByDate = () => {
     const sorted = [...filteredLoans].sort((a, b) => {
       const dateA = new Date(a.startDate);
@@ -226,7 +228,7 @@ const Dashboard = () => {
         <div className="card-header table-header d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Recent Loans</h5>
 
-          {/* 🔍 Date Filter */}
+          {/* Date Filter */}
           <div className="d-flex align-items-center gap-2">
             <div className="d-flex align-items-center">
               <label className="me-2 fw-medium">From:</label>
@@ -266,7 +268,7 @@ const Dashboard = () => {
                   <th>Customer Name</th>
                   <th>Amount</th>
                   <th>Interest Rate</th>
-                  {/* 🔹 Clickable Due Date Header */}
+                  {/* Clickable Due Date Header */}
                   <th
                     style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
                     onClick={sortByDate}

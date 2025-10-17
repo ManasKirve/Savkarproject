@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import ApiService from '../services/apiService'; // Import the new API service
+import ApiService from '../services/apiService'; 
 import './LoanRecords.css';
 
 const LoanRecords = () => {
@@ -68,12 +68,20 @@ const LoanRecords = () => {
     setLoading(true);
     setError(null);
     try {
-      const loansData = await ApiService.getAllLoans();
-      setLoans(loansData || []);
+      console.log("LoanRecords: Starting to load loans...");
+      const res = await ApiService.getAllLoans();
+      console.log("LoanRecords: Loans data received:", res);
+      // ApiService normalizes server snake_case -> camelCase and may return array or { data: [...] }
+      const loansData = Array.isArray(res) ? res : (res?.data ?? []);
+
+      // Don't treat empty array as an error; just show empty state if no records exist
+      setLoans(loansData);
+      setFilteredLoans(loansData); // Initialize filteredLoans with all loans
     } catch (error) {
-      console.error('Error loading loans:', error);
+      console.error('LoanRecords: Error loading loans:', error);
       setError('Failed to load loans. Please try again later.');
       setLoans([]);
+      setFilteredLoans([]);
     } finally {
       setLoading(false);
     }
@@ -81,28 +89,33 @@ const LoanRecords = () => {
 
   const loadDocuments = async (loanId) => {
     try {
+      console.log("LoanRecords: Loading documents for loan:", loanId);
       const loanDocuments = await ApiService.getDocumentsByLoanId(loanId);
+      console.log("LoanRecords: Documents loaded:", loanDocuments);
       setDocuments(loanDocuments);
     } catch (error) {
-      console.error('Error loading documents:', error);
+      console.error('LoanRecords: Error loading documents:', error);
       setDocuments([]);
     }
   };
 
   const filterLoans = () => {
+    console.log("LoanRecords: Filtering loans with searchTerm:", searchTerm, "and statusFilter:", statusFilter);
     let filtered = loans;
 
     if (searchTerm) {
-      filtered = filtered.filter(loan => 
-        (loan.customerName || loan.borrowerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (loan.customerPhone || loan.phoneNumber || '').includes(searchTerm)
-      );
+      filtered = filtered.filter(loan => {
+        const name = (loan.borrowerName || loan.customerName || '').toString().toLowerCase();
+        const phone = (loan.phoneNumber || loan.customerPhone || '').toString();
+        return name.includes(searchTerm.toLowerCase()) || phone.includes(searchTerm);
+      });
     }
 
     if (statusFilter !== 'all') {
       filtered = filtered.filter(loan => loan.status === statusFilter);
     }
 
+    console.log("LoanRecords: Filtered loans count:", filtered.length);
     setFilteredLoans(filtered);
   };
 
@@ -133,6 +146,7 @@ const LoanRecords = () => {
     }
 
     try {
+      console.log("LoanRecords: Submitting loan data:", loanData);
       if (editingLoan) {
         await ApiService.updateLoan(editingLoan.id, loanData);
       } else {
@@ -141,7 +155,7 @@ const LoanRecords = () => {
       loadLoans();
       resetForm();
     } catch (error) {
-      console.error('Error saving loan:', error);
+      console.error('LoanRecords: Error saving loan:', error);
       alert('Failed to save loan. Please try again.');
     }
   };
@@ -157,7 +171,6 @@ const LoanRecords = () => {
       interestRate: '',
       paymentMode: 'Bank Transfer',
       totalLoan: '',
-      paidAmount: '0',
       status: 'Active'
     });
     setEditingLoan(null);
@@ -165,6 +178,7 @@ const LoanRecords = () => {
   };
 
   const handleEdit = (loan) => {
+    console.log("LoanRecords: Editing loan:", loan);
     setEditingLoan(loan);
     setFormData({
       borrowerName: loan.borrowerName || '',
@@ -185,10 +199,11 @@ const LoanRecords = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this loan record?')) {
       try {
+        console.log("LoanRecords: Deleting loan with id:", id);
         await ApiService.deleteLoan(id);
         loadLoans();
       } catch (error) {
-        console.error('Error deleting loan:', error);
+        console.error('LoanRecords: Error deleting loan:', error);
         alert('Failed to delete loan. Please try again.');
       }
     }
@@ -196,6 +211,7 @@ const LoanRecords = () => {
 
   // Profile functionality
   const handleProfileClick = (loan) => {
+    console.log("LoanRecords: Opening profile for loan:", loan);
     setSelectedLoan(loan);
     setShowProfileModal(true);
   };
@@ -241,6 +257,7 @@ const LoanRecords = () => {
     if (!newDocument.file || newDocument.name.trim() === '') return;
     
     try {
+      console.log("LoanRecords: Adding document:", newDocument);
       // Convert file to base64 for storage
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -266,24 +283,26 @@ const LoanRecords = () => {
       };
       reader.readAsDataURL(newDocument.file);
     } catch (error) {
-      console.error('Error adding document:', error);
+      console.error('LoanRecords: Error adding document:', error);
       alert('Failed to add document. Please try again.');
     }
   };
 
   const handleDeleteDocument = async (id) => {
     try {
+      console.log("LoanRecords: Deleting document with id:", id);
       await ApiService.deleteDocument(id);
       // Refresh documents
       loadDocuments(selectedLoan.id);
     } catch (error) {
-      console.error('Error deleting document:', error);
+      console.error('LoanRecords: Error deleting document:', error);
       alert('Failed to delete document. Please try again.');
     }
   };
 
   const handleSaveProfile = async () => {
     try {
+      console.log("LoanRecords: Saving profile for loan:", selectedLoan);
       // Convert profile image to base64 if a new file was selected
       if (profileImageFile) {
         const reader = new FileReader();
@@ -326,7 +345,7 @@ const LoanRecords = () => {
         loadLoans();
       }
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error('LoanRecords: Error saving profile:', error);
       alert('Failed to save profile. Please try again.');
     }
   };
@@ -356,6 +375,7 @@ const LoanRecords = () => {
 
   // Add function to view document
   const handleViewDocument = (document) => {
+    console.log("LoanRecords: Viewing document:", document);
     setViewingDocument(document);
   };
 
@@ -365,11 +385,35 @@ const LoanRecords = () => {
 
   // Add loading and error states
   if (loading) {
-    return <div className="text-center py-5">Loading loans...</div>;
+    return (
+      <div className="container-fluid py-4 px-4">
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading loans...</span>
+          </div>
+          <p className="mt-3">Loading loan records...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="alert alert-danger">{error}</div>;
+    return (
+      <div className="container-fluid py-4 px-4">
+        <div className="alert alert-danger">{error}</div>
+      </div>
+    );
+  }
+
+  // Check if we have loans data
+  if (!loans || loans.length === 0) {
+    return (
+      <div className="container-fluid py-4 px-4">
+        <div className="alert alert-warning">
+          No loan records found. Please check your backend connection or add some loans.
+        </div>
+      </div>
+    );
   }
 
   return (

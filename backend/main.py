@@ -15,25 +15,23 @@ from models import (
 
 app = FastAPI()
 
-
+# Fixed CORS middleware configuration - removed duplicate allow_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],
-    allow_origins=["*"],   
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],  
     allow_headers=["*"],  
 )
-
 
 loans_db: Dict[str, LoanRecord] = {}
 notices_db: Dict[str, LegalNotice] = {}
 transactions_db: Dict[str, Transaction] = {}
 documents_db: Dict[str, Document] = {}
 
-# Initialize with sample data
+
 def initialize_sample_data():
-   
+    # Sample loans
     loan1 = LoanRecord(
         id="1",
         borrower_name="Rajesh Kumar",
