@@ -1,19 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 
 const LoanCalculator = () => {
-  const [loanAmount, setLoanAmount] = useState(1000);
-  const [loanTerm, setLoanTerm] = useState(12);
-  const [interestRate, setInterestRate] = useState(1);
+  const [loanAmount, setLoanAmount] = useState(0);
+  const [loanTerm, setLoanTerm] = useState(0);
+  const [interestRate, setInterestRate] = useState(0);
   const [monthlyPayment, setMonthlyPayment] = useState(0);
-  const [missedPaymentPenalty, setMissedPaymentPenalty] = useState(5);
+  const [missedPaymentPenalty, setMissedPaymentPenalty] = useState(0);
   const [amortizationSchedule, setAmortizationSchedule] = useState([]);
-  const [loanDate, setLoanDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loanDate, setLoanDate] = useState("");
   const [editRowIndex, setEditRowIndex] = useState(null);
-  const [editedTotalAmount, setEditedTotalAmount] = useState('');
-  const [editField, setEditField] = useState('');
+  const [editedTotalAmount, setEditedTotalAmount] = useState("");
+  const [editField, setEditField] = useState("");
 
-  // ✅ Removed auto calculation — user must click Calculate button
+  // ✅ Load from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem("loanCalculatorData");
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setLoanAmount(parsed.loanAmount || 0);
+      setLoanTerm(parsed.loanTerm || 0);
+      setInterestRate(parsed.interestRate || 0);
+      setMissedPaymentPenalty(parsed.missedPaymentPenalty || 0);
+      setLoanDate(parsed.loanDate || "");
+      setAmortizationSchedule(parsed.amortizationSchedule || []);
+      setMonthlyPayment(parsed.monthlyPayment || 0);
+    }
+  }, []);
+
+  // ✅ Save to localStorage whenever schedule or loan details change
+  useEffect(() => {
+    const data = {
+      loanAmount,
+      loanTerm,
+      interestRate,
+      loanDate,
+      missedPaymentPenalty,
+      amortizationSchedule,
+      monthlyPayment,
+    };
+    localStorage.setItem("loanCalculatorData", JSON.stringify(data));
+  }, [
+    loanAmount,
+    loanTerm,
+    interestRate,
+    loanDate,
+    missedPaymentPenalty,
+    amortizationSchedule,
+    monthlyPayment,
+  ]);
+
+  // 🔹 Main loan calculation function
   const calculateLoan = () => {
+    if (loanAmount <= 0 || loanTerm <= 0) return;
+
     const monthlyRate = interestRate / 100;
     let payment = 0;
 
@@ -29,7 +68,7 @@ const LoanCalculator = () => {
 
     let balance = loanAmount;
     const schedule = [];
-    const startDate = new Date(loanDate);
+    const startDate = new Date(loanDate || new Date());
 
     for (let i = 1; i <= loanTerm; i++) {
       const interestPayment = balance * monthlyRate;
@@ -47,55 +86,43 @@ const LoanCalculator = () => {
         balance: Math.max(0, balance).toFixed(2),
         totalAmount: payment.toFixed(2),
         missedPayment: false,
-        dueDate: dueDate.toISOString().split('T')[0],
+        dueDate: dueDate.toISOString().split("T")[0],
       });
     }
 
     setAmortizationSchedule(schedule);
     setEditRowIndex(null);
-    setEditField('');
+    setEditField("");
+  };
+
+  // 🔹 Manual trigger
+  const handleGenerate = () => {
+    calculateLoan();
+  };
+
+  // 🔹 Clear all data
+  const clearData = () => {
+    localStorage.removeItem("loanCalculatorData");
+    setLoanAmount(0);
+    setLoanTerm(0);
+    setInterestRate(0);
+    setMissedPaymentPenalty(0);
+    setLoanDate("");
+    setMonthlyPayment(0);
+    setAmortizationSchedule([]);
+    setEditRowIndex(null);
+    setEditField("");
   };
 
   const handleMissedPayment = (month) => {
-    const updatedSchedule = [...amortizationSchedule];
-    const currentRow = updatedSchedule[month - 1];
-
-    if (currentRow.missedPayment) {
-      currentRow.missedPayment = false;
-      calculateLoan();
-      return;
-    }
-
-    currentRow.missedPayment = true;
-
-    const penaltyRate = missedPaymentPenalty / 100;
-    const remainingBalance = parseFloat(currentRow.balance);
-    const penaltyAmount = remainingBalance * penaltyRate;
-
-    let newBalance = remainingBalance + penaltyAmount;
-
-    for (let i = month; i < updatedSchedule.length; i++) {
-      const monthlyRate = interestRate / 100;
-      const interestPayment = newBalance * monthlyRate;
-      const principalPayment = parseFloat(updatedSchedule[i].payment) - interestPayment;
-
-      newBalance -= principalPayment;
-
-      updatedSchedule[i].interest = interestPayment.toFixed(2);
-      updatedSchedule[i].principal = principalPayment.toFixed(2);
-      updatedSchedule[i].balance = Math.max(0, newBalance).toFixed(2);
-    }
-
-    setAmortizationSchedule(updatedSchedule);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN');
+    const updated = [...amortizationSchedule];
+    const row = updated[month - 1];
+    row.missedPayment = !row.missedPayment;
+    setAmortizationSchedule(updated);
   };
 
   const handleEditField = (index, field) => {
-    if (field === 'totalAmount') {
+    if (field === "totalAmount") {
       setEditRowIndex(index);
       setEditField(field);
       setEditedTotalAmount(amortizationSchedule[index].totalAmount);
@@ -103,64 +130,17 @@ const LoanCalculator = () => {
   };
 
   const handleSaveTotalAmount = (index) => {
-    const updatedSchedule = [...amortizationSchedule];
-    const newTotalAmount = Math.max(0, parseFloat(editedTotalAmount));
-    const monthlyRate = interestRate / 100;
-
-    const currentRow = updatedSchedule[index];
-    const previousBalance = index === 0 ? loanAmount : parseFloat(updatedSchedule[index - 1].balance);
-
-    const interestPayment = parseFloat(currentRow.interest);
-    const principalPayment = Math.max(0, newTotalAmount - interestPayment);
-
-    updatedSchedule[index].totalAmount = newTotalAmount.toFixed(2);
-    updatedSchedule[index].principal = principalPayment.toFixed(2);
-
-    const newBalance = Math.max(0, previousBalance - principalPayment);
-    updatedSchedule[index].balance = newBalance.toFixed(2);
-
-    if (newBalance === 0) {
-      const trimmedSchedule = updatedSchedule.slice(0, index + 1);
-      setAmortizationSchedule(trimmedSchedule);
-      setEditRowIndex(null);
-      setEditField('');
-      return;
-    }
-
-    let currentBalance = newBalance;
-
-    for (let i = index + 1; i < updatedSchedule.length; i++) {
-      const futureInterestPayment = currentBalance * monthlyRate;
-      const futurePrincipalPayment = parseFloat(updatedSchedule[i].payment) - futureInterestPayment;
-
-      currentBalance -= futurePrincipalPayment;
-
-      updatedSchedule[i].interest = futureInterestPayment.toFixed(2);
-      updatedSchedule[i].principal = futurePrincipalPayment.toFixed(2);
-      updatedSchedule[i].balance = Math.max(0, currentBalance).toFixed(2);
-
-      if (currentBalance <= 0) {
-        const trimmedSchedule = updatedSchedule.slice(0, i + 1);
-        setAmortizationSchedule(trimmedSchedule);
-        setEditRowIndex(null);
-        setEditField('');
-        return;
-      }
-    }
-
-    setAmortizationSchedule(updatedSchedule);
+    const updated = [...amortizationSchedule];
+    const newTotal = Math.max(0, parseFloat(editedTotalAmount));
+    updated[index].totalAmount = newTotal.toFixed(2);
+    setAmortizationSchedule(updated);
     setEditRowIndex(null);
-    setEditField('');
+    setEditField("");
   };
 
-  const handleInputChange = (e) => {
-    setEditedTotalAmount(e.target.value);
-  };
-
-  const handleSaveField = (index) => {
-    if (editField === 'totalAmount') {
-      handleSaveTotalAmount(index);
-    }
+  const formatDate = (d) => {
+    const date = new Date(d);
+    return date.toLocaleDateString("en-IN");
   };
 
   return (
@@ -168,49 +148,50 @@ const LoanCalculator = () => {
       <h1 className="text-center mb-4">Loan Calculator</h1>
 
       <div className="row">
-        {/* Loan Details Section */}
         <div className="col-md-4 mb-4">
-          <div className="card shadow-sm h-100">
+          <div className="card shadow-sm">
             <div className="card-body">
-              <h2 className="card-title h5 mb-3">Loan Details</h2>
+              <h5>Loan Details</h5>
 
               <div className="mb-3">
-                <label htmlFor="loan-amount" className="form-label">Loan Amount (₹)</label>
+                <label className="form-label">Loan Amount (₹)</label>
                 <input
-                  id="loan-amount"
                   type="number"
                   className="form-control"
                   value={loanAmount}
-                  onChange={(e) => setLoanAmount(Math.max(0, Number(e.target.value)))}
+                  onChange={(e) =>
+                    setLoanAmount(Math.max(0, Number(e.target.value)))
+                  }
                 />
               </div>
 
               <div className="mb-3">
-                <label htmlFor="loan-term" className="form-label">Loan Term (months)</label>
+                <label className="form-label">Loan Term (months)</label>
                 <input
-                  id="loan-term"
                   type="number"
                   className="form-control"
                   value={loanTerm}
-                  onChange={(e) => setLoanTerm(Math.max(1, Number(e.target.value)))}
+                  onChange={(e) =>
+                    setLoanTerm(Math.max(0, Number(e.target.value)))
+                  }
                 />
               </div>
 
               <div className="mb-3">
-                <label htmlFor="interest-rate" className="form-label">Interest Rate (% per month)</label>
+                <label className="form-label">Interest Rate (% per month)</label>
                 <input
-                  id="interest-rate"
                   type="number"
                   className="form-control"
                   value={interestRate}
-                  onChange={(e) => setInterestRate(Math.max(0, Number(e.target.value)))}
+                  onChange={(e) =>
+                    setInterestRate(Math.max(0, Number(e.target.value)))
+                  }
                 />
               </div>
 
               <div className="mb-3">
-                <label htmlFor="loan-date" className="form-label">Loan Start Date</label>
+                <label className="form-label">Loan Start Date</label>
                 <input
-                  id="loan-date"
                   type="date"
                   className="form-control"
                   value={loanDate}
@@ -219,66 +200,72 @@ const LoanCalculator = () => {
               </div>
 
               <div className="mb-3">
-                <label htmlFor="penalty" className="form-label">Missed Payment Penalty (%)</label>
+                <label className="form-label">Missed Payment Penalty (%)</label>
                 <input
-                  id="penalty"
                   type="number"
                   className="form-control"
                   value={missedPaymentPenalty}
-                  onChange={(e) => setMissedPaymentPenalty(Math.max(0, Number(e.target.value)))}
+                  onChange={(e) =>
+                    setMissedPaymentPenalty(Math.max(0, Number(e.target.value)))
+                  }
                 />
               </div>
 
-              {/* ✅ Calculate Button */}
-              <button className="btn btn-primary w-100" onClick={calculateLoan}>
-                Calculate
-              </button>
+              <div className="d-flex gap-2">
+                <button className="btn btn-primary w-50" onClick={handleGenerate}>
+                  Generate Schedule
+                </button>
+                <button className="btn btn-danger w-50" onClick={clearData}>
+                  Clear All Data
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Summary Card */}
           <div className="card shadow-sm mt-3">
             <div className="card-body">
-              <h2 className="card-title h5 mb-3">Summary</h2>
-              <p className="mb-2">Monthly Payment: ₹{monthlyPayment.toFixed(2)}</p>
-              <p className="mb-2">Total Payment: ₹{(monthlyPayment * loanTerm).toFixed(2)}</p>
-              <p className="mb-2">Total Interest: ₹{(monthlyPayment * loanTerm - loanAmount).toFixed(2)}</p>
+              <h5>Summary</h5>
+              <p>Monthly Payment: ₹{monthlyPayment.toFixed(2)}</p>
+              <p>
+                Total Payment: ₹{(monthlyPayment * loanTerm).toFixed(2) || 0}
+              </p>
+              <p>
+                Total Interest: ₹
+                {(monthlyPayment * loanTerm - loanAmount).toFixed(2) || 0}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Amortization Schedule Section */}
-        <div className="col-md-8 mb-4">
-          <div className="card shadow-sm h-100">
+        <div className="col-md-8">
+          <div className="card shadow-sm">
             <div className="card-body">
-              <h2 className="card-title h5 mb-2">Amortization Schedule</h2>
-              <p className="text-muted mb-3 small">
-                Click on any month to toggle between missed and paid payment.
-                A missed payment adds {missedPaymentPenalty}% penalty to remaining balance.
-                Double-click on Total Amount column to edit values.
+              <h5>Amortization Schedule</h5>
+              <p className="text-muted small">
+                Click row to toggle missed payment.  
+                Double-click Total Amount to edit.
               </p>
 
-              <div className="table-responsive" style={{ maxHeight: '550px' }}>
-                <table className="table table-hover">
-                  <thead className="sticky-top bg-light">
+              <div className="table-responsive" style={{ maxHeight: "550px" }}>
+                <table className="table table-hover table-bordered">
+                  <thead className="table-light sticky-top">
                     <tr>
                       <th>Month</th>
                       <th>Due Date</th>
-                      <th>Principal (₹)</th>
-                      <th>Interest (₹)</th>
-                      <th>Total Amount (₹)</th>
-                      <th>Remaining (₹)</th>
+                      <th>Principal</th>
+                      <th>Interest</th>
+                      <th>Total</th>
+                      <th>Remaining</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {amortizationSchedule.length > 0 ? (
-                      amortizationSchedule.map((row, index) => (
+                      amortizationSchedule.map((row, i) => (
                         <tr
-                          key={row.month}
+                          key={i}
                           onClick={() => handleMissedPayment(row.month)}
-                          className={row.missedPayment ? 'table-danger' : ''}
-                          style={{ cursor: 'pointer' }}
+                          className={row.missedPayment ? "table-danger" : ""}
                         >
                           <td>{row.month}</td>
                           <td>{formatDate(row.dueDate)}</td>
@@ -287,27 +274,28 @@ const LoanCalculator = () => {
                           <td
                             onDoubleClick={(e) => {
                               e.stopPropagation();
-                              handleEditField(index, 'totalAmount');
+                              handleEditField(i, "totalAmount");
                             }}
                           >
-                            {editRowIndex === index && editField === 'totalAmount' ? (
-                              <div onClick={(e) => e.stopPropagation()}>
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={editedTotalAmount}
-                                  onChange={handleInputChange}
-                                  onBlur={() => handleSaveField(index)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveField(index);
-                                    if (e.key === 'Escape') {
-                                      setEditRowIndex(null);
-                                      setEditField('');
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                              </div>
+                            {editRowIndex === i && editField === "totalAmount" ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={editedTotalAmount}
+                                onChange={(e) =>
+                                  setEditedTotalAmount(e.target.value)
+                                }
+                                onBlur={() => handleSaveTotalAmount(i)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter")
+                                    handleSaveTotalAmount(i);
+                                  if (e.key === "Escape") {
+                                    setEditRowIndex(null);
+                                    setEditField("");
+                                  }
+                                }}
+                                autoFocus
+                              />
                             ) : (
                               row.totalAmount
                             )}
@@ -315,9 +303,11 @@ const LoanCalculator = () => {
                           <td>{row.balance}</td>
                           <td>
                             <span
-                              className={`badge ${row.missedPayment ? 'bg-danger' : 'bg-success'}`}
+                              className={`badge ${
+                                row.missedPayment ? "bg-danger" : "bg-success"
+                              }`}
                             >
-                              {row.missedPayment ? 'Missed' : 'Paid'}
+                              {row.missedPayment ? "Missed" : "Paid"}
                             </span>
                           </td>
                         </tr>
@@ -325,7 +315,7 @@ const LoanCalculator = () => {
                     ) : (
                       <tr>
                         <td colSpan="7" className="text-center text-muted">
-                          Click <b>“Calculate”</b> to generate amortization schedule
+                          Generate schedule to see details.
                         </td>
                       </tr>
                     )}

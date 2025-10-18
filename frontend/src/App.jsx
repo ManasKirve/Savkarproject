@@ -10,6 +10,7 @@ import LoanCalculator from './pages/LoanCalculator';
 import InterestCalculator from './pages/InterestCalculator';
 import Login from './pages/Login';
 import './App.css';
+import CustomerProfile from './pages/CustomerProfile';
 
 const queryClient = new QueryClient();
 
@@ -75,8 +76,9 @@ const App = () => {
             <Route path="/legal-notices" element={<LegalNotices />} />
             <Route path="/loan-calculator" element={<LoanCalculator />} />
             <Route path="/interest-calculator" element={<InterestCalculator />} />
+            <Route path="/profile/:id" element={<CustomerProfile />} />
           </Route>
-          
+           
           {/* 404 page - redirect to dashboard */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

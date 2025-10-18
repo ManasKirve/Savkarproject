@@ -1,17 +1,42 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const InterestCalculator = () => {
-  const [loanAmount, setLoanAmount] = useState(10000);
-  const [interestRate, setInterestRate] = useState(2); // % per month
-  const [loanMonths, setLoanMonths] = useState(12);
+  const [loanAmount, setLoanAmount] = useState(0);
+  const [interestRate, setInterestRate] = useState(0);
+  const [loanMonths, setLoanMonths] = useState(0);
   const [loanDays, setLoanDays] = useState(0);
-  const [loanDate, setLoanDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [loanDate, setLoanDate] = useState("");
   const [schedule, setSchedule] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editedPrincipal, setEditedPrincipal] = useState("");
-  const [sortAsc, setSortAsc] = useState(true); // for sorting order
+  const [sortAsc, setSortAsc] = useState(true);
+
+  // 🧠 Load saved data from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem("interestCalculatorData");
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setLoanAmount(parsed.loanAmount || 0);
+      setInterestRate(parsed.interestRate || 0);
+      setLoanMonths(parsed.loanMonths || 0);
+      setLoanDays(parsed.loanDays || 0);
+      setLoanDate(parsed.loanDate || "");
+      setSchedule(parsed.schedule || []);
+    }
+  }, []);
+
+  // 💾 Save all data to localStorage whenever anything changes
+  useEffect(() => {
+    const dataToSave = {
+      loanAmount,
+      interestRate,
+      loanMonths,
+      loanDays,
+      loanDate,
+      schedule,
+    };
+    localStorage.setItem("interestCalculatorData", JSON.stringify(dataToSave));
+  }, [loanAmount, interestRate, loanMonths, loanDays, loanDate, schedule]);
 
   const calculateSchedule = () => {
     const basePrincipal = loanAmount;
@@ -19,7 +44,6 @@ const InterestCalculator = () => {
     const start = new Date(loanDate);
     const newSchedule = [];
 
-    // 1️⃣ Monthly schedule
     for (let i = 1; i <= loanMonths; i++) {
       const dueDate = new Date(start);
       dueDate.setMonth(start.getMonth() + i);
@@ -32,11 +56,10 @@ const InterestCalculator = () => {
         principal: basePrincipal.toFixed(2),
         interest: interestAmount.toFixed(2),
         remaining: basePrincipal.toFixed(2),
-        status: "Paid", // default "Paid"
+        status: "Paid",
       });
     }
 
-    // 2️⃣ Extra days (if any)
     if (loanDays > 0) {
       const dueDate = new Date(start);
       dueDate.setMonth(start.getMonth() + loanMonths);
@@ -69,54 +92,24 @@ const InterestCalculator = () => {
     setEditedPrincipal(schedule[index].principal);
   };
 
-  // ✅ Modified version — updates subsequent rows dynamically
+  // ✅ Save edited principal only (no future recalculation)
   const handleSavePrincipal = (index) => {
     const updated = [...schedule];
     const newPrincipal = Math.max(0, parseFloat(editedPrincipal) || 0);
     const monthlyRate = interestRate / 100;
 
-    // Update current row
-    const current = updated[index];
-    current.principal = newPrincipal.toFixed(2);
+    const row = updated[index];
+    row.principal = newPrincipal.toFixed(2);
 
-    // Recalculate interest for this row
-    const label = current.label;
-    let interest;
-    if (label.includes("Days")) {
-      const dayCount = parseInt(label);
+    if (row.label.includes("Days")) {
+      const dayCount = parseInt(row.label);
       const dayFraction = dayCount / 30;
-      interest = newPrincipal * monthlyRate * dayFraction;
+      row.interest = (newPrincipal * monthlyRate * dayFraction).toFixed(2);
     } else {
-      interest = newPrincipal * monthlyRate;
-    }
-    current.interest = interest.toFixed(2);
-    current.remaining = newPrincipal.toFixed(2);
-
-    // 🔁 Update future rows (after this index)
-    let currentPrincipal = newPrincipal;
-    for (let i = index + 1; i < updated.length; i++) {
-      const row = updated[i];
-
-      // For simplicity, assume principal remains same as previous "remaining"
-      const nextPrincipal = currentPrincipal;
-
-      let nextInterest;
-      if (row.label.includes("Days")) {
-        const dayCount = parseInt(row.label);
-        const dayFraction = dayCount / 30;
-        nextInterest = nextPrincipal * monthlyRate * dayFraction;
-      } else {
-        nextInterest = nextPrincipal * monthlyRate;
-      }
-
-      row.principal = nextPrincipal.toFixed(2);
-      row.interest = nextInterest.toFixed(2);
-      row.remaining = nextPrincipal.toFixed(2);
-
-      // Update for next iteration
-      currentPrincipal = nextPrincipal;
+      row.interest = (newPrincipal * monthlyRate).toFixed(2);
     }
 
+    row.remaining = newPrincipal.toFixed(2);
     setSchedule(updated);
     setEditIndex(null);
   };
@@ -137,6 +130,16 @@ const InterestCalculator = () => {
     setSchedule(sorted);
     setSortAsc(!sortAsc);
   };
+
+const clearData = () => {
+  localStorage.removeItem("interestCalculatorData");
+  setSchedule([]);
+  setLoanAmount(0);
+  setInterestRate(0);
+  setLoanMonths(0);
+  setLoanDays(0);
+  setLoanDate("");
+};
 
   return (
     <div className="container py-4">
@@ -200,13 +203,18 @@ const InterestCalculator = () => {
                 />
               </div>
 
-              {/* ✅ Calculate Button */}
-              <div className="text-center">
+              <div className="d-grid gap-2">
                 <button
-                  className="btn btn-primary w-100"
+                  className="btn btn-primary"
                   onClick={calculateSchedule}
                 >
                   Calculate Schedule
+                </button>
+                <button
+                  className="btn btn-outline-danger"
+                  onClick={clearData}
+                >
+                  Clear All Data
                 </button>
               </div>
             </div>
@@ -238,8 +246,8 @@ const InterestCalculator = () => {
             <div className="card-body">
               <h5>Schedule</h5>
               <p className="text-muted mb-3 small">
-                Double-click on Principal column to edit values. Future rows
-                update automatically.
+                Double-click on Principal to edit. Press Tab or Enter to save.
+                All data (including loan details) auto-saves to localStorage.
               </p>
 
               <div className="table-responsive" style={{ maxHeight: "550px" }}>
@@ -290,8 +298,10 @@ const InterestCalculator = () => {
                               }
                               onBlur={() => handleSavePrincipal(index)}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter")
+                                if (e.key === "Enter" || e.key === "Tab") {
+                                  e.preventDefault();
                                   handleSavePrincipal(index);
+                                }
                                 if (e.key === "Escape") setEditIndex(null);
                               }}
                               autoFocus
