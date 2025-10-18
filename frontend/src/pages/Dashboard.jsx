@@ -23,15 +23,8 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log("Dashboard: Starting to fetch data...");
         setLoading(true);
-        
-        // First get dashboard summary from the dedicated endpoint
-        console.log("Dashboard: Fetching dashboard summary...");
         const dashboardData = await ApiService.getDashboardSummary();
-        console.log("Dashboard: Dashboard summary received:", dashboardData);
-        
-        // Update stats with the data from the dashboard summary endpoint
         setStats({
           totalLoans: dashboardData.activeRecords + dashboardData.pendingRecords + dashboardData.closingRecords,
           activeLoans: dashboardData.activeRecords,
@@ -41,18 +34,11 @@ const Dashboard = () => {
           collectedAmount: dashboardData.recoveredAmount,
           pendingAmount: dashboardData.pendingAmount
         });
-        
-        // Then get loans for the table
-        console.log("Dashboard: Fetching loans data...");
         const loansData = await ApiService.getAllLoans();
-        console.log("Dashboard: Loans data received:", loansData);
         setLoans(loansData);
-        
       } catch (err) {
-        console.error('Dashboard: Error fetching dashboard data:', err);
         setError('Failed to load dashboard data. Please try again later.');
       } finally {
-        console.log("Dashboard: Setting loading to false");
         setLoading(false);
       }
     };
@@ -60,20 +46,33 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Apply Date Range Filter
+  // Helper: calculate due date (start date but current month)
+  const getDueDate = (loan) => {
+    if (loan.status === 'Closed') return null;
+    const start = new Date(loan.startDate);
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const dueDate = new Date(start);
+    dueDate.setMonth(currentMonth);
+    dueDate.setFullYear(currentYear);
+    return dueDate;
+  };
+
+  // Apply Date Range Filter based on Due Date
   const filteredLoans = loans.filter((loan) => {
+    const dueDate = getDueDate(loan);
     if (!fromDate && !toDate) return true;
-    const loanDate = new Date(loan.startDate);
+    if (!dueDate) return false; // closed loans have no due date
     const from = fromDate ? new Date(fromDate) : null;
     const to = toDate ? new Date(toDate) : null;
 
-    if (from && to) return loanDate >= from && loanDate <= to;
-    if (from) return loanDate >= from;
-    if (to) return loanDate <= to;
+    if (from && to) return dueDate >= from && dueDate <= to;
+    if (from) return dueDate >= from;
+    if (to) return dueDate <= to;
     return true;
   });
 
-  // Sort by Date when column clicked
+  // Sort by Start Date
   const sortByDate = () => {
     const sorted = [...filteredLoans].sort((a, b) => {
       const dateA = new Date(a.startDate);
@@ -143,7 +142,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        
         <div className="col-md-3 mb-3">
           <div className="card stat-card stat-card-custom stat-card-success">
             <div className="card-body stat-card-body">
@@ -159,7 +157,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        
         <div className="col-md-3 mb-3">
           <div className="card stat-card stat-card-custom stat-card-warning">
             <div className="card-body stat-card-body">
@@ -175,7 +172,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        
         <div className="col-md-3 mb-3">
           <div className="card stat-card stat-card-custom stat-card-danger">
             <div className="card-body stat-card-body">
@@ -203,7 +199,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        
         <div className="col-md-4 mb-3">
           <div className="card amount-card">
             <div className="card-body amount-card-body">
@@ -212,7 +207,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-        
         <div className="col-md-4 mb-3">
           <div className="card amount-card">
             <div className="card-body amount-card-body">
@@ -268,72 +262,76 @@ const Dashboard = () => {
                   <th>Customer Name</th>
                   <th>Amount</th>
                   <th>Interest Rate</th>
-                  {/* Clickable Due Date Header */}
                   <th
                     style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
                     onClick={sortByDate}
                   >
-                    Due Date{' '}
-                    <i
-                      className={`fas fa-sort-${
-                        sortOrder === 'asc' ? 'up' : 'down'
-                      } ms-1`}
-                    ></i>
+                    Start Date <i className={`fas fa-sort-${sortOrder === 'asc' ? 'up' : 'down'} ms-1`}></i>
                   </th>
+                  <th>Due Date</th>
+                  <th>End Date</th>
                   <th>Status</th>
                   <th>Progress</th>
                 </tr>
               </thead>
               <tbody>
                 {recentLoans.length > 0 ? (
-                  recentLoans.map((loan) => (
-                    <tr key={loan.id}>
-                      <td>
-                        <div>
-                          <div className="fw-medium">{loan.borrowerName}</div>
-                          <small className="text-muted">{loan.phoneNumber}</small>
-                        </div>
-                      </td>
-                      <td>₹{loan.totalLoan.toLocaleString()}</td>
-                      <td>{loan.interestRate}%</td>
-                      <td>{new Date(loan.startDate).toLocaleDateString('en-GB')}</td>
-                      <td>
-                        <span
-                          className={`badge badge-custom ${
-                            loan.status === 'Active'
-                              ? 'badge-success'
-                              : loan.status === 'Closed'
-                              ? 'badge-info'
-                              : loan.status === 'Pending'
-                              ? 'badge-danger'
-                              : 'badge-secondary'
-                          }`}
-                        >
-                          {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="progress progress-custom">
-                          <div
-                            className={`progress-bar progress-bar-custom ${
-                              loan.status === 'Closed'
-                                ? 'progress-bar-success'
+                  recentLoans.map((loan) => {
+                    const dueDate = getDueDate(loan);
+                    const dueDateDisplay = dueDate ? dueDate.toLocaleDateString('en-GB') : '-';
+                    const endDateDisplay = new Date(loan.startDate).toLocaleDateString('en-GB');
+
+                    return (
+                      <tr key={loan.id}>
+                        <td>
+                          <div>
+                            <div className="fw-medium">{loan.borrowerName}</div>
+                            <small className="text-muted">{loan.phoneNumber}</small>
+                          </div>
+                        </td>
+                        <td>₹{loan.totalLoan.toLocaleString()}</td>
+                        <td>{loan.interestRate}%</td>
+                        <td>{new Date(loan.startDate).toLocaleDateString('en-GB')}</td>
+                        <td>{dueDateDisplay}</td>
+                        <td>{endDateDisplay}</td>
+                        <td>
+                          <span
+                            className={`badge badge-custom ${
+                              loan.status === 'Active'
+                                ? 'badge-success'
+                                : loan.status === 'Closed'
+                                ? 'badge-info'
                                 : loan.status === 'Pending'
-                                ? 'progress-bar-danger'
-                                : 'progress-bar-primary'
+                                ? 'badge-danger'
+                                : 'badge-secondary'
                             }`}
-                            style={{ width: `${(loan.paidAmount / loan.totalLoan) * 100}%` }}
-                          ></div>
-                        </div>
-                        <small className="progress-text">
-                          {Math.round((loan.paidAmount / loan.totalLoan) * 100)}% paid
-                        </small>
-                      </td>
-                    </tr>
-                  ))
+                          >
+                            {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="progress progress-custom">
+                            <div
+                              className={`progress-bar progress-bar-custom ${
+                                loan.status === 'Closed'
+                                  ? 'progress-bar-success'
+                                  : loan.status === 'Pending'
+                                  ? 'progress-bar-danger'
+                                  : 'progress-bar-primary'
+                              }`}
+                              style={{ width: `${(loan.paidAmount / loan.totalLoan) * 100}%` }}
+                            ></div>
+                          </div>
+                          <small className="progress-text">
+                            {Math.round((loan.paidAmount / loan.totalLoan) * 100)}% paid
+                          </small>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan="6" className="text-center text-muted py-3">
+                    <td colSpan="8" className="text-center text-muted py-3">
                       No loans found for selected dates.
                     </td>
                   </tr>
