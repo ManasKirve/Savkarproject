@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 const InterestCalculator = () => {
   const [loanAmount, setLoanAmount] = useState(10000);
@@ -11,11 +11,7 @@ const InterestCalculator = () => {
   const [schedule, setSchedule] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
   const [editedPrincipal, setEditedPrincipal] = useState("");
-  const [sortAsc, setSortAsc] = useState(true); // ✅ new state for sorting order
-
-  useEffect(() => {
-    calculateSchedule();
-  }, [loanAmount, interestRate, loanMonths, loanDays, loanDate]);
+  const [sortAsc, setSortAsc] = useState(true); // for sorting order
 
   const calculateSchedule = () => {
     const basePrincipal = loanAmount;
@@ -36,11 +32,11 @@ const InterestCalculator = () => {
         principal: basePrincipal.toFixed(2),
         interest: interestAmount.toFixed(2),
         remaining: basePrincipal.toFixed(2),
-        status: "Paid", // ✅ default "Paid"
+        status: "Paid", // default "Paid"
       });
     }
 
-    // 2️⃣ Add extra days row (if any)
+    // 2️⃣ Extra days (if any)
     if (loanDays > 0) {
       const dueDate = new Date(start);
       dueDate.setMonth(start.getMonth() + loanMonths);
@@ -73,24 +69,53 @@ const InterestCalculator = () => {
     setEditedPrincipal(schedule[index].principal);
   };
 
+  // ✅ Modified version — updates subsequent rows dynamically
   const handleSavePrincipal = (index) => {
     const updated = [...schedule];
     const newPrincipal = Math.max(0, parseFloat(editedPrincipal) || 0);
-    updated[index].principal = newPrincipal.toFixed(2);
+    const monthlyRate = interestRate / 100;
 
-    // Recalculate interest and remaining based on new principal
-    const label = updated[index].label;
+    // Update current row
+    const current = updated[index];
+    current.principal = newPrincipal.toFixed(2);
+
+    // Recalculate interest for this row
+    const label = current.label;
     let interest;
     if (label.includes("Days")) {
       const dayCount = parseInt(label);
       const dayFraction = dayCount / 30;
-      interest = newPrincipal * (interestRate / 100) * dayFraction;
+      interest = newPrincipal * monthlyRate * dayFraction;
     } else {
-      interest = newPrincipal * (interestRate / 100);
+      interest = newPrincipal * monthlyRate;
     }
+    current.interest = interest.toFixed(2);
+    current.remaining = newPrincipal.toFixed(2);
 
-    updated[index].interest = interest.toFixed(2);
-    updated[index].remaining = newPrincipal.toFixed(2);
+    // 🔁 Update future rows (after this index)
+    let currentPrincipal = newPrincipal;
+    for (let i = index + 1; i < updated.length; i++) {
+      const row = updated[i];
+
+      // For simplicity, assume principal remains same as previous "remaining"
+      const nextPrincipal = currentPrincipal;
+
+      let nextInterest;
+      if (row.label.includes("Days")) {
+        const dayCount = parseInt(row.label);
+        const dayFraction = dayCount / 30;
+        nextInterest = nextPrincipal * monthlyRate * dayFraction;
+      } else {
+        nextInterest = nextPrincipal * monthlyRate;
+      }
+
+      row.principal = nextPrincipal.toFixed(2);
+      row.interest = nextInterest.toFixed(2);
+      row.remaining = nextPrincipal.toFixed(2);
+
+      // Update for next iteration
+      currentPrincipal = nextPrincipal;
+    }
 
     setSchedule(updated);
     setEditIndex(null);
@@ -103,7 +128,6 @@ const InterestCalculator = () => {
     setSchedule(updated);
   };
 
-  // ✅ Sorting function for Due Date
   const sortByDate = () => {
     const sorted = [...schedule].sort((a, b) => {
       const dateA = new Date(a.dueDate);
@@ -175,6 +199,16 @@ const InterestCalculator = () => {
                   onChange={(e) => setLoanDate(e.target.value)}
                 />
               </div>
+
+              {/* ✅ Calculate Button */}
+              <div className="text-center">
+                <button
+                  className="btn btn-primary w-100"
+                  onClick={calculateSchedule}
+                >
+                  Calculate Schedule
+                </button>
+              </div>
             </div>
           </div>
 
@@ -202,7 +236,11 @@ const InterestCalculator = () => {
         <div className="col-md-8">
           <div className="card shadow-sm">
             <div className="card-body">
-              <h5 className="mb-3">Schedule</h5>
+              <h5>Schedule</h5>
+              <p className="text-muted mb-3 small">
+                Double-click on Principal column to edit values. Future rows
+                update automatically.
+              </p>
 
               <div className="table-responsive" style={{ maxHeight: "550px" }}>
                 <table className="table table-hover table-bordered align-middle">
@@ -277,6 +315,13 @@ const InterestCalculator = () => {
                         </td>
                       </tr>
                     ))}
+                    {schedule.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="text-center text-muted">
+                          Click <b>"Calculate Schedule"</b> to generate table
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
