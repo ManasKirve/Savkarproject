@@ -145,7 +145,7 @@ const LoanCalculator = () => {
 
   return (
     <div className="container py-4">
-      <h1 className="text-center mb-4">Loan Calculator</h1>
+      <h3 className="text-center mb-4">Loan Calculator</h3>
 
       <div className="row">
         <div className="col-md-4 mb-4">

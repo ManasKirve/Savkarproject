@@ -422,7 +422,7 @@ const LoanRecords = () => {
   return (
     <div className="container-fluid py-4 px-4">
       {/* Header Section */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center">
         <div>
           <h2 className="mb-1" style={{ color: "#1e293b", fontWeight: "600" }}>
             Loan Records
@@ -438,7 +438,7 @@ const LoanRecords = () => {
       </div>
 
       {/* Statistics Overview */}
-      <div className="row g-3 mb-4">
+      <div className="row g-3">
         <div className="col-md-3">
           <div className="card h-100">
             <div className="card-body">
@@ -519,35 +519,32 @@ const LoanRecords = () => {
       </div>
 
       {/* Filters */}
-      <div className="card mb-4">
-        <div className="card-body">
-          <div className="row">
-            <div className="col-md-6">
-              <div className="input-group">
-                <span className="input-group-text">
-                  <i className="fas fa-search"></i>
-                </span>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Search by customer name or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="col-md-6">
-              <select
-                className="form-select"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Pending">Pending</option>
-                <option value="Closed">Closed</option>
-              </select>
-            </div>
-          </div>
+      <div className="d-flex justify-content-end align-items-center my-3 gap-2">
+        {/* Search Input */}
+        <div className="input-group" style={{ width: "400px" }}>
+          <span className="input-group-text">
+            <i className="fas fa-search"></i>
+          </span>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Search by customer name or phone"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        {/* Status Filter */}
+        <div style={{ width: "160px" }}>
+          <select
+            className="form-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Pending">Pending</option>
+            <option value="Closed">Closed</option>
+          </select>
         </div>
       </div>
 

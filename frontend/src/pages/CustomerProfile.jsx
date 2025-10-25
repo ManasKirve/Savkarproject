@@ -23,25 +23,70 @@ const CustomerProfile = () => {
     file: null,
   });
 
-useEffect(() => {
-  const fetchLoan = async () => {
-    try {
-      const data = await ApiService.get(`/loans/${id}`);
-      console.log("Fetched loan data:", data);
-      setSelectedLoan(data);
-      setProfileFormData({
-        occupation: data.occupation || "",
-        address: data.address || "",
-        profilePhoto: data.profilePhoto || "",
-      });
-      setDocuments(data.documents || []);
-    } catch (err) {
-      console.error("Error fetching loan:", err);
-      alert("Failed to load borrower profile.");
-    }
+  const [paymentRecords, setPaymentRecords] = useState([
+    { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
+  ]);
+
+  // ✅ Dummy fallback data
+  const dummyLoanData = {
+    id: 1,
+    borrowerName: "John Doe",
+    occupation: "Software Engineer",
+    address: "123 Main Street, Pune",
+    phoneNumber: "+91 98765 43210",
+    totalLoan: 250000,
+    paidAmount: 125000,
+    emi: 12500,
+    interestRate: 10,
+    paymentMode: "Online",
+    status: "Active",
+    startDate: "2024-04-10",
+    endDate: "2025-04-10",
+    profilePhoto: "",
+    documents: [],
   };
-  fetchLoan();
-}, [id]);
+
+  useEffect(() => {
+    const fetchLoan = async () => {
+      try {
+        const data = await ApiService.get(`/loans/${id}`);
+        console.log("Fetched loan data:", data);
+        setSelectedLoan(data);
+        setProfileFormData({
+          occupation: data.occupation || "",
+          address: data.address || "",
+          profilePhoto: data.profilePhoto || "",
+        });
+        setDocuments(data.documents || []);
+        setPaymentRecords(data.paymentRecords || [
+          { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
+        ]);
+      } catch (err) {
+        console.error("Error fetching loan:", err);
+        setError("Failed to load borrower profile, using dummy data...");
+        alert("API failed — displaying dummy data for testing.");
+        setSelectedLoan(dummyLoanData);
+        setProfileFormData({
+          occupation: dummyLoanData.occupation,
+          address: dummyLoanData.address,
+          profilePhoto: dummyLoanData.profilePhoto,
+        });
+        setDocuments(dummyLoanData.documents);
+        setPaymentRecords([
+          {
+            id: 101,
+            date: "2024-05-01",
+            amount: 12500,
+            status: "Paid",
+            note: "First EMI cleared",
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLoan();
+  }, [id]);
 
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
@@ -83,15 +128,27 @@ useEffect(() => {
     reader.readAsDataURL(newDocument.file);
   };
 
-  const downloadDocument = (doc) => {
-    const link = document.createElement("a");
-    link.href = doc.fileContent;
-    link.download = doc.fileName || doc.name;
-    link.click();
-  };
-
   const handleDeleteDocument = (id) => {
     setDocuments(documents.filter((d) => d.id !== id));
+  };
+
+  const handleAddPaymentRow = () => {
+    setPaymentRecords([
+      ...paymentRecords,
+      { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
+    ]);
+  };
+
+  const handleDeletePaymentRow = (id) => {
+    setPaymentRecords(paymentRecords.filter((r) => r.id !== id));
+  };
+
+  const handlePaymentChange = (id, field, value) => {
+    setPaymentRecords(
+      paymentRecords.map((record) =>
+        record.id === id ? { ...record, [field]: value } : record
+      )
+    );
   };
 
   const handleSaveProfile = async () => {
@@ -101,20 +158,21 @@ useEffect(() => {
         ...selectedLoan,
         ...profileFormData,
         documents,
+        paymentRecords,
       };
       await ApiService.put(`/loans/${id}`, updatedData);
       alert("Profile updated successfully!");
     } catch (err) {
       console.error(err);
-      alert("Failed to update profile.");
+      alert("Failed to update profile (API not responding).");
     }
   };
 
   const isImageFile = (filename) => /\.(jpg|jpeg|png|gif)$/i.test(filename);
 
   if (loading) return <p className="text-center mt-5">Loading profile...</p>;
-  if (error) return <p className="text-center mt-5 text-danger">{error}</p>;
-  if (!selectedLoan) return <p className="text-center mt-5">No profile found</p>;
+  if (!selectedLoan)
+    return <p className="text-center mt-5">No profile found</p>;
 
   return (
     <div className="container my-4">
@@ -125,58 +183,51 @@ useEffect(() => {
         </button>
       </div>
 
-      {/* Profile Section */}
-      <div className="text-center mb-4">
-        <div className="mx-auto mb-3 position-relative" style={{ width: "120px", height: "120px" }}>
-          <img
-            src={
-              profileFormData.profilePhoto ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                selectedLoan.borrowerName || "User"
-              )}&background=0D8ABC&color=fff&size=120`
-            }
-            alt="Profile"
-            className="rounded-circle img-fluid"
-            style={{ objectFit: "cover", width: "100%", height: "100%" }}
-          />
-          <label
-            htmlFor="profile-upload"
-            className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1"
-            style={{ cursor: "pointer" }}
+      {error && <p className="text-warning text-center mb-3">{error}</p>}
+
+      {/* Profile + Loan Info */}
+      <div className="row">
+        <div className="col-md-4 text-center mb-4">
+          <div
+            className="mx-auto mb-3 position-relative"
+            style={{ width: "120px", height: "120px" }}
           >
-            <i className="fas fa-camera text-white"></i>
-          </label>
-          <input
-            id="profile-upload"
-            type="file"
-            className="d-none"
-            accept="image/*"
-            onChange={handleProfileImageChange}
-          />
-          {profileFormData.profilePhoto && (
-            <button
-              className="position-absolute top-0 end-0 bg-info rounded-circle p-1"
+            <img
+              src={
+                profileFormData.profilePhoto ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  selectedLoan.borrowerName || "User"
+                )}&background=0D8ABC&color=fff&size=120`
+              }
+              alt="Profile"
+              className="rounded-circle img-fluid"
+              style={{ objectFit: "cover", width: "100%", height: "100%" }}
+            />
+            <label
+              htmlFor="profile-upload"
+              className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1"
               style={{ cursor: "pointer" }}
-              onClick={downloadProfileImage}
-              title="Download Profile Image"
             >
-              <i className="fas fa-download text-white"></i>
-            </button>
-          )}
-        </div>
-        <h4>{selectedLoan.borrowerName}</h4>
-        <div className="mb-3">
+              <i className="fas fa-camera text-white"></i>
+            </label>
+            <input
+              id="profile-upload"
+              type="file"
+              className="d-none"
+              accept="image/*"
+              onChange={handleProfileImageChange}
+            />
+          </div>
+          <h5>{selectedLoan.borrowerName}</h5>
           <input
             type="text"
-            className="form-control text-center"
+            className="form-control mb-2 text-center"
             placeholder="Occupation"
             value={profileFormData.occupation}
             onChange={(e) =>
               setProfileFormData({ ...profileFormData, occupation: e.target.value })
             }
           />
-        </div>
-        <div className="mb-3">
           <input
             type="text"
             className="form-control text-center"
@@ -186,54 +237,140 @@ useEffect(() => {
               setProfileFormData({ ...profileFormData, address: e.target.value })
             }
           />
+          <p className="text-muted mt-2">{selectedLoan.phoneNumber || "N/A"}</p>
         </div>
-        <p className="text-muted">{selectedLoan.phoneNumber || "N/A"}</p>
+
+        <div className="col-md-8">
+          <div className="card mb-4">
+            <div className="card-header bg-light">
+              <h5 className="mb-0">Loan Details</h5>
+            </div>
+            <div className="card-body">
+              <div className="row">
+                <div className="col-md-6 mb-2">
+                  <strong>Total Loan:</strong> ₹{selectedLoan.totalLoan?.toLocaleString() || 0}
+                </div>
+                <div className="col-md-6 mb-2">
+                  <strong>Paid Amount:</strong> ₹{selectedLoan.paidAmount?.toLocaleString() || 0}
+                </div>
+                <div className="col-md-6 mb-2">
+                  <strong>EMI:</strong> ₹{selectedLoan.emi?.toLocaleString() || 0}
+                </div>
+                <div className="col-md-6 mb-2">
+                  <strong>Interest Rate:</strong> {selectedLoan.interestRate || 0}%
+                </div>
+                <div className="col-md-6 mb-2">
+                  <strong>Payment Mode:</strong> {selectedLoan.paymentMode || "N/A"}
+                </div>
+                <div className="col-md-6 mb-2">
+                  <strong>Status:</strong>{" "}
+                  <span
+                    className={`badge ${
+                      selectedLoan.status === "Active"
+                        ? "bg-success"
+                        : selectedLoan.status === "Closed"
+                        ? "bg-secondary"
+                        : "bg-warning"
+                    }`}
+                  >
+                    {selectedLoan.status || "N/A"}
+                  </span>
+                </div>
+                <div className="col-md-6 mb-2">
+                  <strong>Start Date:</strong>{" "}
+                  {selectedLoan.startDate
+                    ? new Date(selectedLoan.startDate).toLocaleDateString()
+                    : "N/A"}
+                </div>
+                <div className="col-md-6 mb-2">
+                  <strong>End Date:</strong>{" "}
+                  {selectedLoan.endDate
+                    ? new Date(selectedLoan.endDate).toLocaleDateString()
+                    : "N/A"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Loan Details */}
+      {/* ✅ Payment Records Table */}
       <div className="card mb-4">
-        <div className="card-header bg-light">
-          <h5 className="mb-0">Loan Details</h5>
+        <div className="card-header bg-light d-flex justify-content-between align-items-center">
+          <h5 className="mb-0">Payment Records</h5>
+          <button className="btn btn-sm btn-primary" onClick={handleAddPaymentRow}>
+            + Add Row
+          </button>
         </div>
         <div className="card-body">
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <strong>Total Loan:</strong> ₹{selectedLoan.totalLoan?.toLocaleString() || 0}
-            </div>
-            <div className="col-md-6 mb-3">
-              <strong>Paid Amount:</strong> ₹{selectedLoan.paidAmount?.toLocaleString() || 0}
-            </div>
-            <div className="col-md-6 mb-3">
-              <strong>EMI:</strong> ₹{selectedLoan.emi?.toLocaleString() || 0}
-            </div>
-            <div className="col-md-6 mb-3">
-              <strong>Interest Rate:</strong> {selectedLoan.interestRate || 0}%
-            </div>
-            <div className="col-md-6 mb-3">
-              <strong>Payment Mode:</strong> {selectedLoan.paymentMode || "N/A"}
-            </div>
-            <div className="col-md-6 mb-3">
-              <strong>Status:</strong>
-              <span
-                className={`badge ms-2 ${
-                  selectedLoan.status === "Active"
-                    ? "bg-success"
-                    : selectedLoan.status === "Closed"
-                    ? "bg-secondary"
-                    : "bg-warning"
-                }`}
-              >
-                {selectedLoan.status || "N/A"}
-              </span>
-            </div>
-            <div className="col-md-6 mb-3">
-              <strong>Start Date:</strong>{" "}
-              {selectedLoan.startDate ? new Date(selectedLoan.startDate).toLocaleDateString() : "N/A"}
-            </div>
-            <div className="col-md-6 mb-3">
-              <strong>End Date:</strong>{" "}
-              {selectedLoan.endDate ? new Date(selectedLoan.endDate).toLocaleDateString() : "N/A"}
-            </div>
+          <div className="table-responsive">
+            <table className="table table-bordered align-middle">
+              <thead className="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Amount (₹)</th>
+                  <th>Paid/Gap</th>
+                  <th>Note</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentRecords.map((record) => (
+                  <tr key={record.id}>
+                    <td>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={record.date}
+                        onChange={(e) =>
+                          handlePaymentChange(record.id, "date", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={record.amount}
+                        onChange={(e) =>
+                          handlePaymentChange(record.id, "amount", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td>
+                      <select
+                        className="form-select"
+                        value={record.status}
+                        onChange={(e) =>
+                          handlePaymentChange(record.id, "status", e.target.value)
+                        }
+                      >
+                        <option value="Paid">Paid</option>
+                        <option value="Gap">Gap</option>
+                      </select>
+                    </td>
+                    <td>
+                      <textarea
+                        className="form-control"
+                        rows="1"
+                        value={record.note}
+                        onChange={(e) =>
+                          handlePaymentChange(record.id, "note", e.target.value)
+                        }
+                      />
+                    </td>
+                    <td className="text-center">
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDeletePaymentRow(record.id)}
+                      >
+                        −
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -251,14 +388,18 @@ useEffect(() => {
                 className="form-control"
                 placeholder="Document name"
                 value={newDocument.name}
-                onChange={(e) => setNewDocument({ ...newDocument, name: e.target.value })}
+                onChange={(e) =>
+                  setNewDocument({ ...newDocument, name: e.target.value })
+                }
               />
             </div>
             <div className="col-md-3">
               <select
                 className="form-select"
                 value={newDocument.type}
-                onChange={(e) => setNewDocument({ ...newDocument, type: e.target.value })}
+                onChange={(e) =>
+                  setNewDocument({ ...newDocument, type: e.target.value })
+                }
               >
                 <option value="ID Proof">ID Proof</option>
                 <option value="Address Proof">Address Proof</option>
@@ -318,7 +459,12 @@ useEffect(() => {
                       <td>
                         <button
                           className="btn btn-sm btn-light-primary me-1"
-                          onClick={() => downloadDocument(doc)}
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = doc.fileContent;
+                            link.download = doc.fileName || doc.name;
+                            link.click();
+                          }}
                         >
                           <i className="fas fa-download"></i>
                         </button>
