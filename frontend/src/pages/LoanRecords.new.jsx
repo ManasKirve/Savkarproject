@@ -12,7 +12,6 @@ const LoanRecords = () => {
   const [formData, setFormData] = useState({
     borrowerName: '',
     phoneNumber: '',
-    lastAmount: '',
     emi: '',
     startDate: '',
     endDate: '',

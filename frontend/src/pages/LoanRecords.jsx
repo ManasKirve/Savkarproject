@@ -67,14 +67,27 @@ const LoanRecords = () => {
     setError(null);
     try {
       console.log("LoanRecords: Starting to load loans...");
-      const res = await ApiService.getAllLoans();
+      
+      // First, check if the backend is reachable
+      try {
+        const healthCheck = await ApiService.healthCheck();
+        console.log("Health check result:", healthCheck);
+      } catch (healthError) {
+        console.error("Health check failed:", healthError);
+        setError("Backend server is not reachable. Please check if the server is running.");
+        return;
+      }
+      
+      // Use the savkar user ID
+      const savkarUserId = "savkar_user_001";
+      const res = await ApiService.getMyLoans(savkarUserId);
       console.log("LoanRecords: Loans data received:", res);
       // ApiService normalizes server snake_case -> camelCase and may return array or { data: [...] }
       const loansData = Array.isArray(res) ? res : res?.data ?? [];
 
       // Don't treat empty array as an error; just show empty state if no records exist
       setLoans(loansData);
-      setFilteredLoans(loansData); // Initialize filteredLoans with all loans
+      setFilteredLoans(loansData);
     } catch (error) {
       console.error("LoanRecords: Error loading loans:", error);
       setError("Failed to load loans. Please try again later.");
@@ -85,9 +98,47 @@ const LoanRecords = () => {
     }
   };
 
+  const syncLocalLoans = async () => {
+    try {
+      if (typeof window === 'undefined') return;
+      const raw = window.localStorage.getItem('loan_records');
+      if (!raw) {
+        alert('No local loans found to sync.');
+        return;
+      }
+      const localLoans = JSON.parse(raw || '[]');
+      if (!Array.isArray(localLoans) || localLoans.length === 0) {
+        alert('No local loans found to sync.');
+        return;
+      }
+      let anySynced = 0;
+      for (let i = 0; i < localLoans.length; i++) {
+        const loan = localLoans[i];
+        // Skip if already marked as synced
+        if (loan.synced) continue;
+        try {
+          // Use global create loan endpoint
+          await ApiService.createLoan(loan);
+          localLoans[i].synced = true;
+          anySynced++;
+        } catch (e) {
+          console.warn('Sync loan failed for', loan, e);
+        }
+      }
+      // Persist back the synced flags
+      window.localStorage.setItem('loan_records', JSON.stringify(localLoans));
+      loadLoans();
+      alert(`Sync finished. ${anySynced} loan(s) synced to server.`);
+    } catch (e) {
+      console.error('syncLocalLoans error', e);
+      alert('Failed to sync local loans. See console for details.');
+    }
+  };
+
   const loadDocuments = async (loanId) => {
     try {
       console.log("LoanRecords: Loading documents for loan:", loanId);
+      // Use global documents endpoint
       const loanDocuments = await ApiService.getDocumentsByLoanId(loanId);
       console.log("LoanRecords: Documents loaded:", loanDocuments);
       setDocuments(loanDocuments);
@@ -154,11 +205,19 @@ const LoanRecords = () => {
 
     try {
       console.log("LoanRecords: Submitting loan data:", loanData);
+      
+      // Show loading state
+      setLoading(true);
+      
       if (editingLoan) {
+        // Use global update endpoint
         await ApiService.updateLoan(editingLoan.id, loanData);
       } else {
-        await ApiService.createLoan(loanData);
+        // Use global create endpoint
+        const result = await ApiService.createLoan(loanData);
+        console.log("LoanRecords: Loan created successfully:", result);
       }
+      
       loadLoans();
       resetForm();
     } catch (error) {
@@ -207,6 +266,7 @@ const LoanRecords = () => {
     if (window.confirm("Are you sure you want to delete this loan record?")) {
       try {
         console.log("LoanRecords: Deleting loan with id:", id);
+        // Use global delete endpoint
         await ApiService.deleteLoan(id);
         loadLoans();
       } catch (error) {
@@ -269,6 +329,7 @@ const LoanRecords = () => {
       // Convert file to base64 for storage
       const reader = new FileReader();
       reader.onloadend = async () => {
+        // Use global document endpoint
         await ApiService.createDocument({
           loanId: selectedLoan.id,
           name: newDocument.name,
@@ -299,6 +360,7 @@ const LoanRecords = () => {
   const handleDeleteDocument = async (id) => {
     try {
       console.log("LoanRecords: Deleting document with id:", id);
+      // Use global document endpoint
       await ApiService.deleteDocument(id);
       // Refresh documents
       loadDocuments(selectedLoan.id);
@@ -315,6 +377,7 @@ const LoanRecords = () => {
       if (profileImageFile) {
         const reader = new FileReader();
         reader.onloadend = async () => {
+          // Use global update endpoint
           await ApiService.updateLoan(selectedLoan.id, {
             profilePhoto: reader.result,
             occupation: profileFormData.occupation,
@@ -335,6 +398,7 @@ const LoanRecords = () => {
         reader.readAsDataURL(profileImageFile);
       } else {
         // Update without changing the profile photo
+        // Use global update endpoint
         await ApiService.updateLoan(selectedLoan.id, {
           profilePhoto: profileFormData.profilePhoto,
           occupation: profileFormData.occupation,
@@ -555,18 +619,18 @@ const LoanRecords = () => {
             <table className="table table-hover mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>Borrower Name</th>
-                  <th>Phone Number</th>
-                  <th>Total Loan</th>
-                  <th>Paid Amount</th>
+                  <th>CUSTOMER NAME</th>
+                  <th>PHONE NUMBER</th>
+                  <th>TOTAL LOAN</th>
+                  <th>PAID AMOUNT</th>
                   <th>EMI</th>
-                  <th>Interest Rate</th>
-                  <th>Payment Mode</th>
-                  <th>Start Date</th>
-                  <th>End Date</th>
-                  <th>Status</th>
-                  <th>Progress</th>
-                  <th>Actions</th>
+                  <th>INTEREST RATE</th>
+                  <th>PAYMENT MODE</th>
+                  <th>START DATE</th>
+                  <th>END DATE</th>
+                  <th>STATUS</th>
+                  <th>PROGRESS</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>

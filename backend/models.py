@@ -1,8 +1,18 @@
-# models.py
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
+
+def to_camel(snake_str: str) -> str:
+    components = snake_str.split('_')
+    # We capitalize the first letter of each component except the first one
+    # with the 'title' method and join them together.
+    return components[0] + ''.join(x.title() for x in components[1:])
+
+class CamelCaseModel(BaseModel):
+    class Config:
+        alias_generator = to_camel
+        populate_by_name = True
 
 class PaymentMode(str, Enum):
     CASH = "Cash"
@@ -24,7 +34,7 @@ class TransactionType(str, Enum):
     LOAN_ISSUE = "Loan Issue"
     INTEREST = "Interest"
 
-class Document(BaseModel):
+class Document(CamelCaseModel):
     id: str
     loan_id: str
     name: str
@@ -33,11 +43,10 @@ class Document(BaseModel):
     file_content: Optional[str] = None  # Base64 encoded
     file_name: Optional[str] = None
 
-class LoanRecord(BaseModel):
+class LoanRecord(CamelCaseModel):
     id: str
     borrower_name: str
     phone_number: str
-    last_amount: float
     emi: float
     start_date: str
     end_date: str
@@ -52,7 +61,7 @@ class LoanRecord(BaseModel):
     occupation: Optional[str] = None
     address: Optional[str] = None
 
-class LegalNotice(BaseModel):
+class LegalNotice(CamelCaseModel):
     id: str
     borrower_id: str
     borrower_name: str
@@ -62,7 +71,7 @@ class LegalNotice(BaseModel):
     description: str
     created_at: datetime
 
-class Transaction(BaseModel):
+class Transaction(CamelCaseModel):
     id: str
     borrower_id: str
     borrower_name: str
@@ -71,7 +80,7 @@ class Transaction(BaseModel):
     date: str
     description: str
 
-class DashboardSummary(BaseModel):
+class DashboardSummary(CamelCaseModel):
     total_loan_issued: float
     recovered_amount: float
     pending_amount: float
@@ -80,10 +89,9 @@ class DashboardSummary(BaseModel):
     closing_records: int
 
 # Request models for creating/updating
-class LoanCreate(BaseModel):
+class LoanCreate(CamelCaseModel):
     borrower_name: str
     phone_number: str
-    last_amount: float
     emi: float
     start_date: str
     end_date: str
@@ -96,10 +104,9 @@ class LoanCreate(BaseModel):
     occupation: Optional[str] = None
     address: Optional[str] = None
 
-class LoanUpdate(BaseModel):
+class LoanUpdate(CamelCaseModel):
     borrower_name: Optional[str] = None
     phone_number: Optional[str] = None
-    last_amount: Optional[float] = None
     emi: Optional[float] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
@@ -112,7 +119,7 @@ class LoanUpdate(BaseModel):
     occupation: Optional[str] = None
     address: Optional[str] = None
 
-class NoticeCreate(BaseModel):
+class NoticeCreate(CamelCaseModel):
     borrower_id: str
     borrower_name: str
     amount_due: float
@@ -120,7 +127,7 @@ class NoticeCreate(BaseModel):
     status: NoticeStatus
     description: str
 
-class NoticeUpdate(BaseModel):
+class NoticeUpdate(CamelCaseModel):
     borrower_id: Optional[str] = None
     borrower_name: Optional[str] = None
     amount_due: Optional[float] = None
@@ -128,7 +135,7 @@ class NoticeUpdate(BaseModel):
     status: Optional[NoticeStatus] = None
     description: Optional[str] = None
 
-class TransactionCreate(BaseModel):
+class TransactionCreate(CamelCaseModel):
     borrower_id: str
     borrower_name: str
     amount: float
@@ -136,7 +143,7 @@ class TransactionCreate(BaseModel):
     date: str
     description: str
 
-class DocumentCreate(BaseModel):
+class DocumentCreate(CamelCaseModel):
     loan_id: str
     name: str
     type: str

@@ -24,7 +24,11 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        console.log("Dashboard: Fetching dashboard data...");
+        
         const dashboardData = await ApiService.getDashboardSummary();
+        console.log("Dashboard: Dashboard data received:", dashboardData);
+        
         setStats({
           totalLoans: dashboardData.activeRecords + dashboardData.pendingRecords + dashboardData.closingRecords,
           activeLoans: dashboardData.activeRecords,
@@ -34,9 +38,12 @@ const Dashboard = () => {
           collectedAmount: dashboardData.recoveredAmount,
           pendingAmount: dashboardData.pendingAmount
         });
+        
         const loansData = await ApiService.getAllLoans();
+        console.log("Dashboard: Loans data received:", loansData);
         setLoans(loansData);
       } catch (err) {
+        console.error("Dashboard: Error fetching data:", err);
         setError('Failed to load dashboard data. Please try again later.');
       } finally {
         setLoading(false);
@@ -285,12 +292,12 @@ const Dashboard = () => {
                       <tr key={loan.id}>
                         <td>
                           <div>
-                            <div className="fw-medium">{loan.borrowerName}</div>
-                            <small className="text-muted">{loan.phoneNumber}</small>
+                            <div className="fw-medium">{loan.borrowerName || 'N/A'}</div>
+                            <small className="text-muted">{loan.phoneNumber || 'N/A'}</small>
                           </div>
                         </td>
-                        <td>₹{loan.totalLoan.toLocaleString()}</td>
-                        <td>{loan.interestRate}%</td>
+                        <td>₹{(loan.totalLoan || 0).toLocaleString()}</td>
+                        <td>{loan.interestRate || 0}%</td>
                         <td>{new Date(loan.startDate).toLocaleDateString('en-GB')}</td>
                         <td>{dueDateDisplay}</td>
                         <td>{endDateDisplay}</td>
@@ -306,7 +313,7 @@ const Dashboard = () => {
                                 : 'badge-secondary'
                             }`}
                           >
-                            {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
+                            {loan.status ? loan.status.charAt(0).toUpperCase() + loan.status.slice(1) : 'Unknown'}
                           </span>
                         </td>
                         <td>
@@ -319,11 +326,11 @@ const Dashboard = () => {
                                   ? 'progress-bar-danger'
                                   : 'progress-bar-primary'
                               }`}
-                              style={{ width: `${(loan.paidAmount / loan.totalLoan) * 100}%` }}
+                              style={{ width: `${(loan.paidAmount && loan.totalLoan) ? (loan.paidAmount / loan.totalLoan) * 100 : 0}%` }}
                             ></div>
                           </div>
                           <small className="progress-text">
-                            {Math.round((loan.paidAmount / loan.totalLoan) * 100)}% paid
+                            {loan.paidAmount && loan.totalLoan ? Math.round((loan.paidAmount / loan.totalLoan) * 100) : 0}% paid
                           </small>
                         </td>
                       </tr>

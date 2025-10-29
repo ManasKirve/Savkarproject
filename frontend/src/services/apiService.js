@@ -1,6 +1,6 @@
 // src/services/apiService.js
 
-const API_BASE_URL = 'http://localhost:8001'; 
+const API_BASE_URL = 'http://localhost:8000'; 
 
 class ApiService {
   // Helper method for making API requests
@@ -16,24 +16,11 @@ class ApiService {
 
     const config = { ...defaultOptions, ...options };
     
-    // Convert request body keys from camelCase -> snake_case for backend compatibility
-    const decamelize = (obj) => {
-      if (Array.isArray(obj)) return obj.map(decamelize);
-      if (obj && typeof obj === 'object') {
-        return Object.keys(obj).reduce((acc, key) => {
-          const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-          acc[snakeKey] = decamelize(obj[key]);
-          return acc;
-        }, {});
-      }
-      return obj;
-    };
-
+    // Your backend expects camelCase due to by_alias=True, so NO conversion needed
     if (config.body && typeof config.body === 'object') {
       try {
-        config.body = JSON.stringify(decamelize(config.body));
+        config.body = JSON.stringify(config.body);
       } catch (e) {
-        // Fallback to raw stringify on failure
         config.body = JSON.stringify(config.body);
       }
     }
@@ -45,19 +32,17 @@ class ApiService {
       console.log(`ApiService: Response status: ${response.status}`);
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`ApiService: Error response: ${errorText}`);
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
       }
       
-      // Handle empty responses (like for DELETE requests)
-      if (response.status === 204) {
-        console.log("ApiService: Empty response, returning null");
-        return null;
-      }
+      if (response.status === 204) return null;
       
       const data = await response.json();
-      console.log(`ApiService: Response data for ${url}:`, data);
-
-      // Normalize snake_case keys from backend to camelCase for frontend usage
+      console.log(`ApiService: Response data:`, data);
+      
+      // Your backend returns snake_case, convert to camelCase for frontend
       const camelize = (obj) => {
         if (Array.isArray(obj)) {
           return obj.map(camelize);
@@ -71,7 +56,10 @@ class ApiService {
         return obj;
       };
 
-      return camelize(data);
+      const camelizedData = camelize(data);
+      console.log(`ApiService: Camelized data:`, camelizedData);
+      
+      return camelizedData;
     } catch (error) {
       console.error(`ApiService: Request failed for ${url}:`, error);
       throw error;
@@ -80,14 +68,19 @@ class ApiService {
 
   // Dashboard
   static async getDashboardSummary() {
-    console.log("ApiService: Getting dashboard summary");
-    return this.request('/dashboard/summary');
+    const response = await this.request('/dashboard/summary');
+    // Handle if the response is wrapped in a data object
+    return response.data || response;
   }
 
-  // Loan Records
+  // Loan Records (Global endpoints - NO UID required)
   static async getAllLoans() {
-    console.log("ApiService: Getting all loans");
-    return this.request('/loans');
+    const response = await this.request('/loans');
+    // Handle if the response is wrapped in a data object
+    if (response.data && Array.isArray(response.data)) {
+      return response.data;
+    }
+    return Array.isArray(response) ? response : [];
   }
 
   static async createLoan(loanData) {
@@ -97,57 +90,24 @@ class ApiService {
     });
   }
 
-  static async updateLoan(id, updates) {
-    return this.request(`/loans/${id}`, {
+  static async updateLoan(loanId, loanData) {
+    return this.request(`/loans/${loanId}`, {
       method: 'PUT',
-      body: updates,
+      body: loanData,
     });
   }
 
-  static async deleteLoan(id) {
-    return this.request(`/loans/${id}`, {
+  static async deleteLoan(loanId) {
+    return this.request(`/loans/${loanId}`, {
       method: 'DELETE',
     });
   }
 
-  // Legal Notices
-  static async getAllNotices() {
-    return this.request('/notices');
-  }
-
-  static async createNotice(noticeData) {
-    return this.request('/notices', {
-      method: 'POST',
-      body: noticeData,
-    });
-  }
-
-  static async updateNotice(id, updates) {
-    return this.request(`/notices/${id}`, {
-      method: 'PUT',
-      body: updates,
-    });
-  }
-
-  // Transactions
-  static async getAllTransactions() {
-    return this.request('/transactions');
-  }
-
-  static async createTransaction(transactionData) {
-    return this.request('/transactions', {
-      method: 'POST',
-      body: transactionData,
-    });
-  }
-
-  // Documents
-  static async getAllDocuments() {
-    return this.request('/documents');
-  }
-
+  // Documents (Global endpoints - NO UID required)
   static async getDocumentsByLoanId(loanId) {
-    return this.request(`/loans/${loanId}/documents`);
+    const response = await this.request(`/loans/${loanId}/documents`);
+    // Handle if the response is wrapped in a data object
+    return response.data || response;
   }
 
   static async createDocument(documentData) {
@@ -157,16 +117,47 @@ class ApiService {
     });
   }
 
-  static async deleteDocument(id) {
-    return this.request(`/documents/${id}`, {
+  static async deleteDocument(docId) {
+    return this.request(`/documents/${docId}`, {
       method: 'DELETE',
     });
   }
 
-  // Defaulters
-  static async getDefaulters() {
-    return this.request('/loans/defaulters');
+  // Per-user loans list - OPTIONAL UID
+  static async getMyLoans(uid) {
+    if (uid) {
+      const response = await this.request(`/users/me/loans?uid=${uid}`);
+      // Handle if the response is wrapped in a data object
+      return response.data || response;
+    } else {
+      return this.getAllLoans(); // Fallback to global
+    }
+  }
+
+  // Legal Notices
+  static async getAllNotices() {
+    const response = await this.request('/notices');
+    // Handle if the response is wrapped in a data object
+    return response.data || response;
+  }
+
+  // Health check
+  static async healthCheck() {
+    return this.request('/health');
+  }
+
+  // Debug endpoints
+  static async debugFirebase() {
+    return this.request('/debug/firebase');
+  }
+
+  static async debugUserLoans(uid) {
+    return this.request(`/debug/user/${uid}/loans`);
+  }
+
+  static async debugSampleLoans() {
+    return this.request('/debug/sample-loans');
   }
 }
-
+  
 export default ApiService;

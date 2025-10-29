@@ -15,7 +15,6 @@ export interface LoanRecord {
   id: string;
   borrowerName: string;
   phoneNumber: string;
-  lastAmount: number;
   emi: number;
   startDate: string;
   endDate: string;
