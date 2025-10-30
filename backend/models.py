@@ -149,3 +149,4 @@ class DocumentCreate(CamelCaseModel):
     type: str
     file_content: Optional[str] = None
     file_name: Optional[str] = None
+    borrower_name: Optional[str] = None  # Add this field

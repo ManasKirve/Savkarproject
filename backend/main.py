@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from datetime import datetime
 from typing import List, Dict
 import uuid
@@ -246,7 +246,53 @@ def delete_document(doc_id: str):
         logger.error(f"Error deleting document in Firestore: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete document: {e}")
 
-# ... rest of your existing code for notices and user-specific endpoints remains the same
+# New endpoint to get document file content
+@app.get("/documents/{doc_id}/file")
+async def get_document_file(doc_id: str):
+    """Get document file content by document ID"""
+    try:
+        savkar_user_id = firestore_repo.SAVKAR_USER_ID
+        
+        # Get the document
+        doc = firestore_repo._docs_col(savkar_user_id).document(doc_id).get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Document not found")
+            
+        doc_data = doc.to_dict()
+        file_content = doc_data.get('file_content', '')
+        file_name = doc_data.get('file_name', 'document')
+        
+        # Check if the content is a base64 data URL
+        if file_content.startswith('data:'):
+            # Extract the MIME type and base64 data
+            import base64
+            header, encoded = file_content.split(',', 1)
+            mime_type = header.split(':')[1].split(';')[0]
+            
+            # Decode the base64 content
+            binary_data = base64.b64decode(encoded)
+            
+            # Return the file with proper content type
+            return Response(
+                content=binary_data, 
+                media_type=mime_type,
+                headers={
+                    "Content-Disposition": f"inline; filename={file_name}"
+                }
+            )
+        else:
+            # If it's not a data URL, return as plain text
+            return Response(
+                content=file_content, 
+                media_type="text/plain",
+                headers={
+                    "Content-Disposition": f"attachment; filename={file_name}"
+                }
+            )
+        
+    except Exception as e:
+        logger.error(f"Error getting document file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/notices", response_model=List[LegalNotice])
 def get_notices(request: Request, uid: str = None):

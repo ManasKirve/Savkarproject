@@ -27,25 +27,6 @@ const CustomerProfile = () => {
     { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
   ]);
 
-  // ✅ Dummy fallback data
-  const dummyLoanData = {
-    id: 1,
-    borrowerName: "John Doe",
-    occupation: "Software Engineer",
-    address: "123 Main Street, Pune",
-    phoneNumber: "+91 98765 43210",
-    totalLoan: 250000,
-    paidAmount: 125000,
-    emi: 12500,
-    interestRate: 10,
-    paymentMode: "Online",
-    status: "Active",
-    startDate: "2024-04-10",
-    endDate: "2025-04-10",
-    profilePhoto: "",
-    documents: [],
-  };
-
   useEffect(() => {
     const fetchLoan = async () => {
       try {

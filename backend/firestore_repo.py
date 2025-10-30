@@ -269,10 +269,32 @@ def create_document_for_user(uid: str, document_data: Dict[str, Any]) -> Documen
             logger.error(f"Failed to get documents collection for user {uid}")
             raise Exception(f"Failed to create document for user {uid}")
             
+        # If borrower_name is not provided, try to get it from the loan
+        if 'borrower_name' not in document_data and 'loan_id' in document_data:
+            try:
+                loan_col = _loans_col(uid)
+                if loan_col:
+                    loan_doc = loan_col.document(document_data['loan_id']).get()
+                    if loan_doc.exists:
+                        loan_data = loan_doc.to_dict()
+                        document_data['borrower_name'] = loan_data.get('borrower_name', '')
+            except Exception as e:
+                logger.error(f"Error getting borrower_name from loan: {e}")
+        
         doc_ref = col.document()
         now = datetime.utcnow()
         document_data = dict(document_data)
         document_data.setdefault('uploaded_at', now)
+        
+        # Generate a shorter file ID instead of storing the full content
+        if 'file_content' in document_data and document_data['file_content']:
+            # Instead of storing the full base64, store a reference ID
+            file_id = str(uuid.uuid4())
+            document_data['file_id'] = file_id
+            document_data['file_size'] = len(document_data['file_content']) // 1024  # Size in KB
+            
+            # Store the full content without truncation
+            # REMOVE THIS LINE: document_data['file_content'] = document_data['file_content'][:100] + '...'  # Truncate for display
         
         doc_ref.set(document_data)
         logger.info(f"Created document {doc_ref.id} for user {uid}")
@@ -294,8 +316,7 @@ def create_document_for_user(uid: str, document_data: Dict[str, Any]) -> Documen
         raise Exception(f"Failed to retrieve saved document for user {uid}")
     except Exception as e:
         logger.error(f"Error creating document for user {uid}: {e}")
-        raise Exception(f"Failed to create document for user {uid}: {e}")
-
+        raise Exception(f"Failed to create document for user {uid}: {e}")    
 def delete_document_for_user(uid: str, doc_id: str):
     """Delete a document for a user"""
     try:

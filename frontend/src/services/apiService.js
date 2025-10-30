@@ -158,6 +158,11 @@ class ApiService {
   static async debugSampleLoans() {
     return this.request('/debug/sample-loans');
   }
-}
   
+  // Add the getBaseUrl method
+  static getBaseUrl() {
+    return API_BASE_URL;
+  }
+}
+
 export default ApiService;

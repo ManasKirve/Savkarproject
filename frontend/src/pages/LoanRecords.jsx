@@ -330,36 +330,155 @@ const LoanRecords = () => {
     }
   };
 
+  // Add this function to compress images before upload
+  const compressImage = (file, maxSizeKB = 60) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Start with original quality
+          let quality = 0.8;
+          let dataUrl = '';
+          let blob;
+          let sizeKB = 0;
+          
+          // Function to check size and adjust
+          const checkSize = () => {
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Get data URL and check size
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+            
+            // Convert to blob to get accurate size
+            canvas.toBlob((b) => {
+              blob = b;
+              sizeKB = blob.size / 1024;
+              
+              // If size is acceptable, resolve
+              if (sizeKB <= maxSizeKB) {
+                resolve({
+                  file: new File([blob], file.name, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                  }),
+                  dataUrl: dataUrl,
+                  originalSize: file.size,
+                  compressedSize: blob.size,
+                  sizeKB: sizeKB.toFixed(2)
+                });
+              } else {
+                // Try reducing quality or dimensions
+                if (quality > 0.3) {
+                  quality -= 0.1;
+                  checkSize();
+                } else if (width > 400 && height > 400) {
+                  // Reduce dimensions by 20%
+                  width = Math.floor(width * 0.8);
+                  height = Math.floor(height * 0.8);
+                  quality = 0.8; // Reset quality
+                  checkSize();
+                } else {
+                  // If we can't compress further, use what we have
+                  resolve({
+                    file: new File([blob], file.name, {
+                      type: 'image/jpeg',
+                      lastModified: Date.now()
+                    }),
+                    dataUrl: dataUrl,
+                    originalSize: file.size,
+                    compressedSize: blob.size,
+                    sizeKB: sizeKB.toFixed(2),
+                    warning: `Could not compress below ${maxSizeKB}KB. Final size: ${sizeKB.toFixed(2)}KB`
+                  });
+                }
+              }
+            }, 'image/jpeg', quality);
+          };
+          
+          // Start the compression process
+          checkSize();
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleAddDocument = async () => {
     if (!newDocument.file || newDocument.name.trim() === '') return;
     
     try {
       console.log("LoanRecords: Adding document:", newDocument);
-      // Convert file to base64 for storage
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        // Use global document endpoint
-        await ApiService.createDocument({
-          loanId: selectedLoan.id,
-          name: newDocument.name,
-          type: newDocument.type,
-          fileContent: reader.result,
-          fileName: newDocument.fileName
+      
+      let fileToUpload = newDocument.file;
+      let dataUrl = null;
+      let compressionInfo = null;
+      
+      // If it's an image, compress it
+      if (newDocument.file.type.startsWith('image/')) {
+        try {
+          compressionInfo = await compressImage(newDocument.file);
+          fileToUpload = compressionInfo.file;
+          dataUrl = compressionInfo.dataUrl;
+          
+          console.log(`Image compression result: 
+            Original: ${(compressionInfo.originalSize / 1024).toFixed(2)} KB → 
+            Compressed: ${compressionInfo.sizeKB} KB
+            Reduction: ${((1 - (compressionInfo.compressedSize / compressionInfo.originalSize)) * 100).toFixed(1)}%`);
+          
+          // Show warning if compression wasn't successful
+          if (compressionInfo.warning) {
+            alert(compressionInfo.warning);
+          }
+        } catch (error) {
+          console.error("Image compression failed, using original:", error);
+          // If compression fails, read the original file
+          const reader = new FileReader();
+          dataUrl = await new Promise(resolve => {
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(newDocument.file);
+          });
+        }
+      } else {
+        // For non-image files, just read as data URL
+        const reader = new FileReader();
+        dataUrl = await new Promise(resolve => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(newDocument.file);
         });
-        
-        // Refresh documents
-        loadDocuments(selectedLoan.id);
-        
-        // Reset form
-        setNewDocument({ 
-          name: '', 
-          type: 'ID Proof', 
-          file: null,
-          fileName: '' 
-        });
-        document.getElementById('document-file-input').value = '';
-      };
-      reader.readAsDataURL(newDocument.file);
+      }
+      
+      // Use global document endpoint
+      await ApiService.createDocument({
+        loanId: selectedLoan.id,
+        name: newDocument.name,
+        type: newDocument.type,
+        fileContent: dataUrl,
+        fileName: fileToUpload.name,
+        borrowerName: selectedLoan.borrowerName
+      });
+      
+      // Refresh documents
+      loadDocuments(selectedLoan.id);
+      
+      // Reset form
+      setNewDocument({ 
+        name: '', 
+        type: 'ID Proof', 
+        file: null,
+        fileName: '' 
+      });
+      document.getElementById('document-file-input').value = '';
     } catch (error) {
       console.error('LoanRecords: Error adding document:', error);
       alert('Failed to add document. Please try again.');
@@ -437,21 +556,38 @@ const LoanRecords = () => {
     setProfileImageFile(null);
   };
 
-  const downloadDocument = (document) => {
-    // Create a download link for the document
-    const link = document.createElement('a');
-    link.href = document.fileContent;
-    link.download = document.fileName || document.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   // Add function to check if a file is an image
   const isImageFile = (fileName) => {
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
     const extension = fileName.split('.').pop().toLowerCase();
     return imageExtensions.includes(extension);
+  };
+
+  // Add function to check if content is an image data URL
+  const isImageDataUrl = (content) => {
+    return content && content.startsWith('data:image/');
+  };
+
+  const downloadDocument = (document) => {
+    if (document.fileContent) {
+      // Create a download link for the document
+      const link = document.createElement('a');
+      
+      if (document.fileContent.startsWith('data:')) {
+        // If it's a data URL, use it directly
+        link.href = document.fileContent;
+      } else {
+        // Otherwise, use the API endpoint
+        link.href = `${ApiService.getBaseUrl()}/documents/${document.id}/file`;
+      }
+      
+      link.download = document.fileName || document.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('File content not available for download');
+    }
   };
 
   // Add function to view document
@@ -909,10 +1045,10 @@ const LoanRecords = () => {
         </div>
       )}
 
-      {/* Profile Modal */}
+      {/* Profile Modal - Modified to take 90% of the page */}
       {showProfileModal && selectedLoan && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
+        <div className="modal show d-block modal-90percent-container" tabIndex="-1">
+          <div className="modal-dialog modal-90percent">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Borrower Profile</h5>
@@ -924,16 +1060,15 @@ const LoanRecords = () => {
               </div>
               <div className="modal-body">
                 {/* Profile Section */}
-                <div className="text-center mb-4">
-                  <div className="mx-auto mb-3 position-relative" style={{ width: '120px', height: '120px' }}>
+                <div className="profile-section">
+                  <div className="profile-image-container">
                     <img 
                       src={profileFormData.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedLoan.borrowerName)}&background=0D8ABC&color=fff&size=120`}
                       alt="Profile" 
-                      className="rounded-circle img-fluid"
-                      style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                      className="profile-image"
                     />
-                    <label htmlFor="profile-upload" className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1" style={{ cursor: 'pointer' }}>
-                      <i className="fas fa-camera text-white"></i>
+                    <label htmlFor="profile-upload" className="profile-edit-btn">
+                      <i className="fas fa-camera"></i>
                     </label>
                     <input 
                       id="profile-upload"
@@ -954,52 +1089,59 @@ const LoanRecords = () => {
                       </button>
                     )}
                   </div>
-                  <h4>{selectedLoan.borrowerName}</h4>
-                  <div className="mb-3">
-                    <input
-                      type="text"
-                      className="form-control text-center"
-                      placeholder="Occupation"
-                      value={profileFormData.occupation}
-                      onChange={(e) => setProfileFormData({...profileFormData, occupation: e.target.value})}
-                    />
+                  <h4 className="profile-name">{selectedLoan.borrowerName}</h4>
+                  <div className="profile-details">
+                    <div className="mb-3">
+                      <input
+                        type="text"
+                        className="form-control text-center"
+                        placeholder="Occupation"
+                        value={profileFormData.occupation}
+                        onChange={(e) => setProfileFormData({...profileFormData, occupation: e.target.value})}
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <input
+                        type="text"
+                        className="form-control text-center"
+                        placeholder="Address"
+                        value={profileFormData.address}
+                        onChange={(e) => setProfileFormData({...profileFormData, address: e.target.value})}
+                      />
+                    </div>
+                    <p className="text-muted">{selectedLoan.phoneNumber}</p>
                   </div>
-                  <div className="mb-3">
-                    <input
-                      type="text"
-                      className="form-control text-center"
-                      placeholder="Address"
-                      value={profileFormData.address}
-                      onChange={(e) => setProfileFormData({...profileFormData, address: e.target.value})}
-                    />
-                  </div>
-                  <p className="text-muted">{selectedLoan.phoneNumber}</p>
                 </div>
 
                 {/* Loan Details Section */}
-                <div className="card mb-4">
-                  <div className="card-header bg-light">
+                <div className="loan-details-card">
+                  <div className="loan-details-header">
                     <h5 className="mb-0">Loan Details</h5>
                   </div>
-                  <div className="card-body">
-                    <div className="row">
-                      <div className="col-md-6 mb-3">
-                        <strong>Total Loan:</strong> ₹{selectedLoan.totalLoan?.toLocaleString()}
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <strong>Paid Amount:</strong> ₹{selectedLoan.paidAmount?.toLocaleString()}
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <strong>EMI:</strong> ₹{selectedLoan.emi?.toLocaleString()}
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <strong>Interest Rate:</strong> {selectedLoan.interestRate}%
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <strong>Payment Mode:</strong> {selectedLoan.paymentMode}
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <strong>Status:</strong> 
+                  <div className="loan-details-body">
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">Total Loan:</span>
+                      <span className="loan-detail-value">₹{selectedLoan.totalLoan?.toLocaleString()}</span>
+                    </div>
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">Paid Amount:</span>
+                      <span className="loan-detail-value">₹{selectedLoan.paidAmount?.toLocaleString()}</span>
+                    </div>
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">EMI:</span>
+                      <span className="loan-detail-value">₹{selectedLoan.emi?.toLocaleString()}</span>
+                    </div>
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">Interest Rate:</span>
+                      <span className="loan-detail-value">{selectedLoan.interestRate}%</span>
+                    </div>
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">Payment Mode:</span>
+                      <span className="loan-detail-value">{selectedLoan.paymentMode}</span>
+                    </div>
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">Status:</span>
+                      <span className="loan-detail-value">
                         <span className={`badge ${
                           selectedLoan.status === 'Active' ? 'bg-success' :
                           selectedLoan.status === 'Closed' ? 'bg-secondary' :
@@ -1007,69 +1149,73 @@ const LoanRecords = () => {
                         } ms-2`}>
                           {selectedLoan.status}
                         </span>
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <strong>Start Date:</strong> {new Date(selectedLoan.startDate).toLocaleDateString()}
-                      </div>
-                      <div className="col-md-6 mb-3">
-                        <strong>End Date:</strong> {new Date(selectedLoan.endDate).toLocaleDateString()}
-                      </div>
+                      </span>
+                    </div>
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">Start Date:</span>
+                      <span className="loan-detail-value">{new Date(selectedLoan.startDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="loan-detail-item">
+                      <span className="loan-detail-label">End Date:</span>
+                      <span className="loan-detail-value">{new Date(selectedLoan.endDate).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Documents Section */}
-                <div className="card">
+                <div className="document-section">
                   <div className="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 className="mb-0">Documents</h5>
                   </div>
                   <div className="card-body">
                     {/* Add Document Form */}
-                    <div className="row mb-4">
-                      <div className="col-md-4">
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Document name"
-                          value={newDocument.name}
-                          onChange={(e) => setNewDocument({...newDocument, name: e.target.value})}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <select
-                          className="form-select"
-                          value={newDocument.type}
-                          onChange={(e) => setNewDocument({...newDocument, type: e.target.value})}
-                        >
-                          <option value="ID Proof">ID Proof</option>
-                          <option value="Address Proof">Address Proof</option>
-                          <option value="Income Certificate">Income Certificate</option>
-                          <option value="Agreement">Agreement</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      <div className="col-md-3">
-                        <input
-                          id="document-file-input"
-                          type="file"
-                          className="form-control"
-                          onChange={handleDocumentFileChange}
-                        />
-                      </div>
-                      <div className="col-md-2">
-                        <button 
-                          className="btn btn-primary w-100"
-                          onClick={handleAddDocument}
-                          disabled={!newDocument.file}
-                        >
-                          Add
-                        </button>
+                    <div className="document-form">
+                      <div className="row mb-4">
+                        <div className="col-md-4">
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Document name"
+                            value={newDocument.name}
+                            onChange={(e) => setNewDocument({...newDocument, name: e.target.value})}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <select
+                            className="form-select"
+                            value={newDocument.type}
+                            onChange={(e) => setNewDocument({...newDocument, type: e.target.value})}
+                          >
+                            <option value="ID Proof">ID Proof</option>
+                            <option value="Address Proof">Address Proof</option>
+                            <option value="Income Certificate">Income Certificate</option>
+                            <option value="Agreement">Agreement</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div className="col-md-3">
+                          <input
+                            id="document-file-input"
+                            type="file"
+                            className="form-control"
+                            onChange={handleDocumentFileChange}
+                          />
+                        </div>
+                        <div className="col-md-2">
+                          <button 
+                            className="btn btn-primary w-100"
+                            onClick={handleAddDocument}
+                            disabled={!newDocument.file}
+                          >
+                            Add
+                          </button>
+                        </div>
                       </div>
                     </div>
 
                     {/* Documents List */}
                     {documents.length > 0 ? (
-                      <div className="table-responsive">
+                      <div className="document-table">
                         <table className="table table-sm">
                           <thead>
                             <tr>
@@ -1086,13 +1232,13 @@ const LoanRecords = () => {
                                 <td>{doc.name}</td>
                                 <td>{doc.type}</td>
                                 <td>
-                                  {doc.fileContent && isImageFile(doc.fileName || doc.name) ? (
+                                  {doc.fileContent && (isImageDataUrl(doc.fileContent) || isImageFile(doc.fileName || doc.name)) ? (
                                     <img 
                                       src={doc.fileContent} 
                                       alt={doc.name}
-                                      className="img-thumbnail"
-                                      style={{ width: '50px', height: '50px', objectFit: 'cover', cursor: 'pointer' }}
+                                      className="document-preview"
                                       onClick={() => handleViewDocument(doc)}
+                                      style={{ maxWidth: '50px', maxHeight: '50px', cursor: 'pointer' }}
                                     />
                                   ) : (
                                     <i className="fas fa-file-alt fa-2x text-muted"></i>
@@ -1100,27 +1246,29 @@ const LoanRecords = () => {
                                 </td>
                                 <td>{new Date(doc.uploadedAt).toLocaleDateString()}</td>
                                 <td>
-                                  <button 
-                                    className="btn btn-sm btn-light-primary me-1"
-                                    onClick={() => downloadDocument(doc)}
-                                    title="Download"
-                                  >
-                                    <i className="fas fa-download"></i>
-                                  </button>
-                                  <button 
-                                    className="btn btn-sm btn-light-info me-1"
-                                    onClick={() => handleViewDocument(doc)}
-                                    title="View"
-                                  >
-                                    <i className="fas fa-eye"></i>
-                                  </button>
-                                  <button 
-                                    className="btn btn-sm btn-light-danger"
-                                    onClick={() => handleDeleteDocument(doc.id)}
-                                    title="Delete"
-                                  >
-                                    <i className="fas fa-trash"></i>
-                                  </button>
+                                  <div className="document-actions">
+                                    <button 
+                                      className="btn btn-sm btn-light-primary me-1"
+                                      onClick={() => downloadDocument(doc)}
+                                      title="Download"
+                                    >
+                                      <i className="fas fa-download"></i>
+                                    </button>
+                                    <button 
+                                      className="btn btn-sm btn-light-info me-1"
+                                      onClick={() => handleViewDocument(doc)}
+                                      title="View"
+                                    >
+                                      <i className="fas fa-eye"></i>
+                                    </button>
+                                    <button 
+                                      className="btn btn-sm btn-light-danger"
+                                      onClick={() => handleDeleteDocument(doc.id)}
+                                      title="Delete"
+                                    >
+                                      <i className="fas fa-trash"></i>
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -1157,7 +1305,7 @@ const LoanRecords = () => {
       {/* Document Viewer Modal */}
       {viewingDocument && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
+          <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">{viewingDocument.name}</h5>
@@ -1168,18 +1316,28 @@ const LoanRecords = () => {
                 ></button>
               </div>
               <div className="modal-body text-center">
-                {viewingDocument.fileContent && isImageFile(viewingDocument.fileName || viewingDocument.name) ? (
-                  <img 
-                    src={viewingDocument.fileContent} 
-                    alt={viewingDocument.name}
-                    className="img-fluid"
-                    style={{ maxHeight: '70vh' }}
-                  />
+                {viewingDocument.fileContent ? (
+                  <>
+                    {isImageDataUrl(viewingDocument.fileContent) ? (
+                      <img 
+                        src={viewingDocument.fileContent} 
+                        alt={viewingDocument.name}
+                        className="document-viewer-image"
+                        style={{ maxWidth: '100%', maxHeight: '70vh' }}
+                      />
+                    ) : (
+                      <div className="p-5">
+                        <i className="fas fa-file-alt fa-5x text-muted mb-3"></i>
+                        <h4>{viewingDocument.name}</h4>
+                        <p className="text-muted">This document cannot be previewed. Please download to view.</p>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="p-5">
                     <i className="fas fa-file-alt fa-5x text-muted mb-3"></i>
                     <h4>{viewingDocument.name}</h4>
-                    <p className="text-muted">This document cannot be previewed. Please download to view.</p>
+                    <p className="text-muted">File content not available.</p>
                   </div>
                 )}
               </div>
