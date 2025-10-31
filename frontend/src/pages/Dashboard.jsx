@@ -93,33 +93,201 @@ const Dashboard = () => {
 
   const recentLoans = filteredLoans.slice(0, 5);
 
-  // Function to handle Excel export
+  // Function to handle Excel export with styling
   const handleExportReport = () => {
     // Create a new workbook
     const wb = XLSX.utils.book_new();
     
-    // Prepare data for Excel
+    // Prepare data for Excel with separate Note and File columns
     const excelData = filteredLoans.map((loan, index) => {
       const dueDate = getDueDate(loan);
       return {
         'S.No': index + 1,
         'Name': loan.borrowerName || 'N/A',
         'Interest': `${loan.interestRate || 0}%`,
-        'Amount': `₹${loan.totalLoan || 0}`, // Added rupee symbol here
+        'Amount': loan.totalLoan || 0,
         'Due Date': dueDate ? dueDate.toLocaleDateString('en-GB') : '-',
         'Paid Date': '', // Leave blank for user to fill
-        'Note/file': ''  // Leave blank for user to fill
+        'Note': '',      // Leave blank for user to fill
+        'File': ''       // Leave blank for user to fill
       };
     });
 
     // Create worksheet
     const ws = XLSX.utils.json_to_sheet(excelData);
     
+    // Define styles for different elements
+    const headerStyle = {
+      font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4472C4" } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+      }
+    };
+    
+    const amountStyle = {
+      font: { bold: true, sz: 11, color: { rgb: "000000" } },
+      fill: { fgColor: { rgb: "C6E0B4" } }, // Light green
+      numFmt: '"₹"#,##0.00',
+      border: {
+        top: { style: "thin", color: { rgb: "D9D9D9" } },
+        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+        left: { style: "thin", color: { rgb: "D9D9D9" } },
+        right: { style: "thin", color: { rgb: "D9D9D9" } }
+      }
+    };
+    
+    const interestStyle = {
+      font: { sz: 11, color: { rgb: "7030A0" } },
+      fill: { fgColor: { rgb: "E2D9F3" } }, // Light purple
+      border: {
+        top: { style: "thin", color: { rgb: "D9D9D9" } },
+        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+        left: { style: "thin", color: { rgb: "D9D9D9" } },
+        right: { style: "thin", color: { rgb: "D9D9D9" } }
+      }
+    };
+    
+    const dueDateStyle = {
+      font: { bold: true, sz: 11, color: { rgb: "000000" } },
+      fill: { fgColor: { rgb: "FFEB9C" } }, // Light yellow
+      border: {
+        top: { style: "thin", color: { rgb: "D9D9D9" } },
+        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+        left: { style: "thin", color: { rgb: "D9D9D9" } },
+        right: { style: "thin", color: { rgb: "D9D9D9" } }
+      }
+    };
+    
+    const paidDateStyle = {
+      font: { sz: 11, color: { rgb: "000000" } },
+      fill: { fgColor: { rgb: "BDD7EE" } }, // Light blue
+      border: {
+        top: { style: "thin", color: { rgb: "D9D9D9" } },
+        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+        left: { style: "thin", color: { rgb: "D9D9D9" } },
+        right: { style: "thin", color: { rgb: "D9D9D9" } }
+      }
+    };
+    
+    const noteStyle = {
+      font: { sz: 11, color: { rgb: "000000" } },
+      fill: { fgColor: { rgb: "D9D9D9" } }, // Light gray
+      border: {
+        top: { style: "thin", color: { rgb: "D9D9D9" } },
+        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+        left: { style: "thin", color: { rgb: "D9D9D9" } },
+        right: { style: "thin", color: { rgb: "D9D9D9" } }
+      }
+    };
+    
+    const fileStyle = {
+      font: { sz: 11, color: { rgb: "000000" } },
+      fill: { fgColor: { rgb: "F8CBAD" } }, // Light orange
+      border: {
+        top: { style: "thin", color: { rgb: "D9D9D9" } },
+        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+        left: { style: "thin", color: { rgb: "D9D9D9" } },
+        right: { style: "thin", color: { rgb: "D9D9D9" } }
+      }
+    };
+    
+    // Get the range of the worksheet
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    
+    // Apply header style to the first row
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!ws[headerCell]) continue;
+      ws[headerCell].s = headerStyle;
+    }
+    
+    // Apply styles to data rows
+    for (let R = 1; R <= range.e.r; ++R) {
+      // S.No column (index 0)
+      const snoCell = XLSX.utils.encode_cell({ r: R, c: 0 });
+      if (ws[snoCell]) ws[snoCell].s = { 
+        font: { sz: 11, color: { rgb: "000000" } }, 
+        fill: { fgColor: { rgb: "F2F2F2" } },
+        border: {
+          top: { style: "thin", color: { rgb: "D9D9D9" } },
+          bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+          left: { style: "thin", color: { rgb: "D9D9D9" } },
+          right: { style: "thin", color: { rgb: "D9D9D9" } }
+        }
+      };
+      
+      // Name column (index 1)
+      const nameCell = XLSX.utils.encode_cell({ r: R, c: 1 });
+      if (ws[nameCell]) ws[nameCell].s = { 
+        font: { sz: 11, color: { rgb: "000000" } }, 
+        fill: { fgColor: { rgb: "F2F2F2" } },
+        border: {
+          top: { style: "thin", color: { rgb: "D9D9D9" } },
+          bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+          left: { style: "thin", color: { rgb: "D9D9D9" } },
+          right: { style: "thin", color: { rgb: "D9D9D9" } }
+        }
+      };
+      
+      // Interest column (index 2)
+      const interestCell = XLSX.utils.encode_cell({ r: R, c: 2 });
+      if (ws[interestCell]) ws[interestCell].s = interestStyle;
+      
+      // Amount column (index 3) - Important column with color
+      const amountCell = XLSX.utils.encode_cell({ r: R, c: 3 });
+      if (ws[amountCell]) ws[amountCell].s = amountStyle;
+      
+      // Due Date column (index 4) - Important column with color
+      const dueDateCell = XLSX.utils.encode_cell({ r: R, c: 4 });
+      if (ws[dueDateCell]) ws[dueDateCell].s = dueDateStyle;
+      
+      // Paid Date column (index 5)
+      const paidDateCell = XLSX.utils.encode_cell({ r: R, c: 5 });
+      if (ws[paidDateCell]) ws[paidDateCell].s = paidDateStyle;
+      
+      // Note column (index 6)
+      const noteCell = XLSX.utils.encode_cell({ r: R, c: 6 });
+      if (ws[noteCell]) ws[noteCell].s = noteStyle;
+      
+      // File column (index 7)
+      const fileCell = XLSX.utils.encode_cell({ r: R, c: 7 });
+      if (ws[fileCell]) ws[fileCell].s = fileStyle;
+    }
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 6 },  // S.No
+      { wch: 25 }, // Name
+      { wch: 10 }, // Interest
+      { wch: 15 }, // Amount
+      { wch: 12 }, // Due Date
+      { wch: 12 }, // Paid Date
+      { wch: 20 }, // Note
+      { wch: 15 }  // File
+    ];
+    
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, "Loans Report");
     
     // Generate Excel file and trigger download
-    XLSX.writeFile(wb, "Loans_Report.xlsx");
+    // Fixed: Use writeBuffer for proper styling support
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "Loans_Report.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
   };
 
   if (loading) {
