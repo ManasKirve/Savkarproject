@@ -14,6 +14,10 @@ const CustomerProfile = () => {
     occupation: "",
     address: "",
     profilePhoto: "",
+    addressAsPerAadhar: "",
+    nave: "",
+    haste: "",
+    purava: "",
   });
 
   const [documents, setDocuments] = useState([]);
@@ -28,38 +32,37 @@ const CustomerProfile = () => {
     { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
   ]);
 
-  // State for document preview
   const [viewingDocument, setViewingDocument] = useState(null);
 
   useEffect(() => {
     const fetchLoan = async () => {
       try {
-        // Get all loans first
         const savkarUserId = "savkar_user_001";
         const loans = await ApiService.getMyLoans(savkarUserId);
-        
-        // Find the specific loan by ID
-        const loan = loans.find(loan => loan.id === id);
-        
-        if (!loan) {
-          throw new Error("Loan not found");
-        }
-        
-        console.log("Fetched loan data:", loan);
+
+        const loan = loans.find((loan) => loan.id === id);
+        if (!loan) throw new Error("Loan not found");
+
         setSelectedLoan(loan);
+
         setProfileFormData({
           occupation: loan.occupation || "",
           address: loan.address || "",
           profilePhoto: loan.profilePhoto || "",
+          addressAsPerAadhar: loan.addressAsPerAadhar || "",
+          nave: loan.nave || "",
+          haste: loan.haste || "",
+          purava: loan.purava || "",
         });
-        
-        // Load documents for this loan
+
         const loanDocuments = await ApiService.getDocumentsByLoanId(id);
         setDocuments(loanDocuments);
-        
-        setPaymentRecords(loan.paymentRecords || [
-          { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
-        ]);
+
+        setPaymentRecords(
+          loan.paymentRecords || [
+            { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
+          ]
+        );
       } catch (err) {
         console.error("Error fetching loan:", err);
         setError("Failed to load borrower profile, using dummy data...");
@@ -69,17 +72,13 @@ const CustomerProfile = () => {
           occupation: dummyLoanData.occupation,
           address: dummyLoanData.address,
           profilePhoto: dummyLoanData.profilePhoto,
+          addressAsPerAadhar: dummyLoanData.addressAsPerAadhar,
+          nave: dummyLoanData.nave,
+          haste: dummyLoanData.haste,
+          purava: dummyLoanData.purava,
         });
         setDocuments(dummyLoanData.documents);
-        setPaymentRecords([
-          {
-            id: 101,
-            date: "2024-05-01",
-            amount: 12500,
-            status: "Paid",
-            note: "First EMI cleared",
-          },
-        ]);
+        setPaymentRecords(dummyLoanData.paymentRecords);
       } finally {
         setLoading(false);
       }
@@ -108,64 +107,63 @@ const CustomerProfile = () => {
   const handleDocumentFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewDocument({ 
-        ...newDocument, 
+      setNewDocument({
+        ...newDocument,
         file,
-        fileName: file.name
+        fileName: file.name,
       });
     }
   };
 
   const handleAddDocument = async () => {
-    if (!newDocument.file || newDocument.name.trim() === '') return;
-    
+    if (!newDocument.file || newDocument.name.trim() === "") return;
+
     try {
       let dataUrl = null;
-      
-      // Read file as data URL
+
       const reader = new FileReader();
-      dataUrl = await new Promise(resolve => {
+      dataUrl = await new Promise((resolve) => {
         reader.onload = (e) => resolve(e.target.result);
         reader.readAsDataURL(newDocument.file);
       });
-      
-      // Save document to database
+
       await ApiService.createDocument({
         loanId: selectedLoan.id,
         name: newDocument.name,
         type: newDocument.type,
         fileContent: dataUrl,
         fileName: newDocument.file.name,
-        borrowerName: selectedLoan.borrowerName
+        borrowerName: selectedLoan.borrowerName,
       });
-      
-      // Refresh documents
-      const updatedDocuments = await ApiService.getDocumentsByLoanId(selectedLoan.id);
+
+      const updatedDocuments = await ApiService.getDocumentsByLoanId(
+        selectedLoan.id
+      );
       setDocuments(updatedDocuments);
-      
-      // Reset form
-      setNewDocument({ 
-        name: '', 
-        type: 'ID Proof', 
+
+      setNewDocument({
+        name: "",
+        type: "ID Proof",
         file: null,
-        fileName: '' 
+        fileName: "",
       });
-      document.getElementById('document-file-input').value = '';
+      document.getElementById("document-file-input").value = "";
     } catch (error) {
-      console.error('Error adding document:', error);
-      alert('Failed to add document. Please try again.');
+      console.error("Error adding document:", error);
+      alert("Failed to add document. Please try again.");
     }
   };
 
   const handleDeleteDocument = async (id) => {
     try {
       await ApiService.deleteDocument(id);
-      // Refresh documents
-      const updatedDocuments = await ApiService.getDocumentsByLoanId(selectedLoan.id);
+      const updatedDocuments = await ApiService.getDocumentsByLoanId(
+        selectedLoan.id
+      );
       setDocuments(updatedDocuments);
     } catch (error) {
-      console.error('Error deleting document:', error);
-      alert('Failed to delete document. Please try again.');
+      console.error("Error deleting document:", error);
+      alert("Failed to delete document. Please try again.");
     }
   };
 
@@ -190,13 +188,21 @@ const CustomerProfile = () => {
 
   const handleSaveProfile = async () => {
     if (!selectedLoan) return;
+
+    const updatedData = {
+      ...selectedLoan,
+      ...profileFormData,
+      paymentRecords,
+    };
+
+    // Fill dummy values if fields are empty
+    updatedData.addressAsPerAadhar =
+      updatedData.addressAsPerAadhar || "Not Available";
+    updatedData.nave = updatedData.nave || "N/A";
+    updatedData.haste = updatedData.haste || "N/A";
+    updatedData.purava = updatedData.purava || "N/A";
+
     try {
-      const updatedData = {
-        ...selectedLoan,
-        ...profileFormData,
-        paymentRecords,
-      };
-      
       await ApiService.updateLoan(selectedLoan.id, updatedData);
       alert("Profile updated successfully!");
     } catch (err) {
@@ -205,28 +211,18 @@ const CustomerProfile = () => {
     }
   };
 
-  // Function to check if a file is an image
   const isImageFile = (filename) => {
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-    const extension = filename.split('.').pop().toLowerCase();
+    const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp"];
+    const extension = filename.split(".").pop().toLowerCase();
     return imageExtensions.includes(extension);
   };
 
-  // Function to check if content is an image data URL
   const isImageDataUrl = (content) => {
-    return content && content.startsWith('data:image/');
+    return content && content.startsWith("data:image/");
   };
 
-  // Function to view document
-  const handleViewDocument = (document) => {
-    console.log("Viewing document:", document);
-    setViewingDocument(document);
-  };
-
-  // Function to close document modal
-  const closeDocumentModal = () => {
-    setViewingDocument(null);
-  };
+  const handleViewDocument = (document) => setViewingDocument(document);
+  const closeDocumentModal = () => setViewingDocument(null);
 
   if (loading) return <p className="text-center mt-5">Loading profile...</p>;
   if (!selectedLoan)
@@ -236,20 +232,21 @@ const CustomerProfile = () => {
     <div className="container my-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Borrower Profile</h3>
-        <button className="btn btn-secondary" onClick={() => navigate('/loan-records')}>
+        <button
+          className="btn btn-secondary"
+          onClick={() => navigate("/loan-records")}>
           ← Back to Loan Records
         </button>
       </div>
 
       {error && <p className="text-warning text-center mb-3">{error}</p>}
 
-      {/* Profile + Loan Info */}
       <div className="row">
+        {/* Profile Column */}
         <div className="col-md-4 text-center mb-4">
           <div
             className="mx-auto mb-3 position-relative"
-            style={{ width: "120px", height: "120px" }}
-          >
+            style={{ width: "120px", height: "120px" }}>
             <img
               src={
                 profileFormData.profilePhoto ||
@@ -264,8 +261,7 @@ const CustomerProfile = () => {
             <label
               htmlFor="profile-upload"
               className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1"
-              style={{ cursor: "pointer" }}
-            >
+              style={{ cursor: "pointer" }}>
               <i className="fas fa-camera text-white"></i>
             </label>
             <input
@@ -276,16 +272,16 @@ const CustomerProfile = () => {
               onChange={handleProfileImageChange}
             />
             {profileFormData.profilePhoto && (
-              <button 
+              <button
                 className="position-absolute top-0 end-0 bg-info rounded-circle p-1"
                 style={{ cursor: "pointer" }}
                 onClick={downloadProfileImage}
-                title="Download Profile Image"
-              >
+                title="Download Profile Image">
                 <i className="fas fa-download text-white"></i>
               </button>
             )}
           </div>
+
           <h5>{selectedLoan.borrowerName}</h5>
           <input
             type="text"
@@ -293,7 +289,10 @@ const CustomerProfile = () => {
             placeholder="Occupation"
             value={profileFormData.occupation}
             onChange={(e) =>
-              setProfileFormData({ ...profileFormData, occupation: e.target.value })
+              setProfileFormData({
+                ...profileFormData,
+                occupation: e.target.value,
+              })
             }
           />
           <input
@@ -302,12 +301,16 @@ const CustomerProfile = () => {
             placeholder="Address"
             value={profileFormData.address}
             onChange={(e) =>
-              setProfileFormData({ ...profileFormData, address: e.target.value })
+              setProfileFormData({
+                ...profileFormData,
+                address: e.target.value,
+              })
             }
           />
           <p className="text-muted mt-2">{selectedLoan.phoneNumber || "N/A"}</p>
         </div>
 
+        {/* Loan Details Column */}
         <div className="col-md-8">
           <div className="card mb-4">
             <div className="card-header bg-light">
@@ -316,19 +319,24 @@ const CustomerProfile = () => {
             <div className="card-body">
               <div className="row">
                 <div className="col-md-6 mb-2">
-                  <strong>Total Loan:</strong> ₹{selectedLoan.totalLoan?.toLocaleString() || 0}
+                  <strong>Total Loan:</strong> ₹
+                  {selectedLoan.totalLoan?.toLocaleString() || 0}
                 </div>
                 <div className="col-md-6 mb-2">
-                  <strong>Paid Amount:</strong> ₹{selectedLoan.paidAmount?.toLocaleString() || 0}
+                  <strong>Paid Amount:</strong> ₹
+                  {selectedLoan.paidAmount?.toLocaleString() || 0}
                 </div>
                 <div className="col-md-6 mb-2">
-                  <strong>EMI:</strong> ₹{selectedLoan.emi?.toLocaleString() || 0}
+                  <strong>EMI:</strong> ₹
+                  {selectedLoan.emi?.toLocaleString() || 0}
                 </div>
                 <div className="col-md-6 mb-2">
-                  <strong>Interest Rate:</strong> {selectedLoan.interestRate || 0}%
+                  <strong>Interest Rate:</strong>{" "}
+                  {selectedLoan.interestRate || 0}%
                 </div>
                 <div className="col-md-6 mb-2">
-                  <strong>Payment Mode:</strong> {selectedLoan.paymentMode || "N/A"}
+                  <strong>Payment Mode:</strong>{" "}
+                  {selectedLoan.paymentMode || "N/A"}
                 </div>
                 <div className="col-md-6 mb-2">
                   <strong>Status:</strong>{" "}
@@ -339,8 +347,7 @@ const CustomerProfile = () => {
                         : selectedLoan.status === "Closed"
                         ? "bg-secondary"
                         : "bg-warning"
-                    }`}
-                  >
+                    }`}>
                     {selectedLoan.status || "N/A"}
                   </span>
                 </div>
@@ -357,16 +364,259 @@ const CustomerProfile = () => {
                     : "N/A"}
                 </div>
               </div>
+
+              {/* ✅ Added New Fields */}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Payment Records Table */}
       <div className="card mb-4">
+        <div className="m-4">
+          <div className="row">
+            {/* Address as per Aadhar */}
+            <div className="col-md-6 mb-3">
+              <label className="form-label fw-bold">
+                Address as per Aadhar
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter address as per Aadhar"
+                value={
+                  profileFormData.addressAsPerAadhar ||
+                  "Pune, Maharashtra, India"
+                }
+                onChange={(e) =>
+                  setProfileFormData({
+                    ...profileFormData,
+                    addressAsPerAadhar: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            {/* Nave */}
+            <div className="col-md-6 mb-3">
+              <label className="form-label fw-bold">Nave</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter Nave"
+                value={profileFormData.nave || "Ganesh Nagar"}
+                onChange={(e) =>
+                  setProfileFormData({
+                    ...profileFormData,
+                    nave: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            {/* Haste */}
+            <div className="col-md-6 mb-3">
+              <label className="form-label fw-bold">Haste</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter Haste"
+                value={profileFormData.haste || "Patil"}
+                onChange={(e) =>
+                  setProfileFormData({
+                    ...profileFormData,
+                    haste: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            {/* Purava */}
+            <div className="col-md-6 mb-3">
+              <label className="form-label fw-bold">Purava</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter Purava"
+                value={profileFormData.purava || "Document Verified"}
+                onChange={(e) =>
+                  setProfileFormData({
+                    ...profileFormData,
+                    purava: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ----------- Jamindar 1 Section ----------- */}
+      <div className="card mt-4 p-3">
+        <h6 className="fw-bold mb-3">Jamindar 1 Details</h6>
+        <div className="row">
+          {/* Jamindar 1 Name */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Jamindar 1 Name</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Jamindar 1 Name"
+              value={profileFormData.jamindar1Name || "Ramesh Shinde"}
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar1Name: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          {/* Jamindar 1 Residence Address */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Residence Address</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Residence Address"
+              value={
+                profileFormData.jamindar1ResidenceAddress ||
+                "Flat No. 12, Laxmi Nagar, Pune"
+              }
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar1ResidenceAddress: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          {/* Jamindar 1 Permanent Address */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Permanent Address</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Permanent Address"
+              value={
+                profileFormData.jamindar1PermanentAddress ||
+                "A/P Satara, Maharashtra"
+              }
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar1PermanentAddress: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          {/* Jamindar 1 Mobile Number */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Mobile No.</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Mobile No."
+              value={profileFormData.jamindar1Mobile || "9876543210"}
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar1Mobile: e.target.value,
+                })
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ----------- Jamindar 2 Section ----------- */}
+      <div className="card mt-4 p-3">
+        <h6 className="fw-bold mb-3">Jamindar 2 Details</h6>
+        <div className="row">
+          {/* Jamindar 2 Name */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Jamindar 2 Name</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Jamindar 2 Name"
+              value={profileFormData.jamindar2Name || "Suresh Pawar"}
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar2Name: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          {/* Jamindar 2 Residence Address */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Residence Address</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Residence Address"
+              value={
+                profileFormData.jamindar2ResidenceAddress ||
+                "Plot No. 21, Shivaji Nagar, Kolhapur"
+              }
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar2ResidenceAddress: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          {/* Jamindar 2 Permanent Address */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Permanent Address</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Permanent Address"
+              value={
+                profileFormData.jamindar2PermanentAddress ||
+                "Kolhapur, Maharashtra"
+              }
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar2PermanentAddress: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          {/* Jamindar 2 Mobile Number */}
+          <div className="col-md-6 mb-3">
+            <label className="form-label fw-bold">Mobile No.</label>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Enter Mobile No."
+              value={profileFormData.jamindar2Mobile || "9876501234"}
+              onChange={(e) =>
+                setProfileFormData({
+                  ...profileFormData,
+                  jamindar2Mobile: e.target.value,
+                })
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Records Table */}
+      <div className="card my-4">
         <div className="card-header bg-light d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Payment Records</h5>
-          <button className="btn btn-sm btn-primary" onClick={handleAddPaymentRow}>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={handleAddPaymentRow}>
             + Add Row
           </button>
         </div>
@@ -401,7 +651,11 @@ const CustomerProfile = () => {
                         className="form-control"
                         value={record.amount}
                         onChange={(e) =>
-                          handlePaymentChange(record.id, "amount", e.target.value)
+                          handlePaymentChange(
+                            record.id,
+                            "amount",
+                            e.target.value
+                          )
                         }
                       />
                     </td>
@@ -410,9 +664,12 @@ const CustomerProfile = () => {
                         className="form-select"
                         value={record.status}
                         onChange={(e) =>
-                          handlePaymentChange(record.id, "status", e.target.value)
-                        }
-                      >
+                          handlePaymentChange(
+                            record.id,
+                            "status",
+                            e.target.value
+                          )
+                        }>
                         <option value="Paid">Paid</option>
                         <option value="Gap">Gap</option>
                       </select>
@@ -430,8 +687,7 @@ const CustomerProfile = () => {
                     <td className="text-center">
                       <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => handleDeletePaymentRow(record.id)}
-                      >
+                        onClick={() => handleDeletePaymentRow(record.id)}>
                         −
                       </button>
                     </td>
@@ -467,8 +723,7 @@ const CustomerProfile = () => {
                 value={newDocument.type}
                 onChange={(e) =>
                   setNewDocument({ ...newDocument, type: e.target.value })
-                }
-              >
+                }>
                 <option value="ID Proof">ID Proof</option>
                 <option value="Address Proof">Address Proof</option>
                 <option value="Income Certificate">Income Certificate</option>
@@ -488,8 +743,7 @@ const CustomerProfile = () => {
               <button
                 className="btn btn-primary w-100"
                 onClick={handleAddDocument}
-                disabled={!newDocument.file}
-              >
+                disabled={!newDocument.file}>
                 Add
               </button>
             </div>
@@ -513,13 +767,19 @@ const CustomerProfile = () => {
                       <td>{doc.name}</td>
                       <td>{doc.type}</td>
                       <td>
-                        {doc.fileContent && (isImageDataUrl(doc.fileContent) || isImageFile(doc.fileName || doc.name)) ? (
-                          <img 
-                            src={doc.fileContent} 
+                        {doc.fileContent &&
+                        (isImageDataUrl(doc.fileContent) ||
+                          isImageFile(doc.fileName || doc.name)) ? (
+                          <img
+                            src={doc.fileContent}
                             alt={doc.name}
                             className="document-preview"
                             onClick={() => handleViewDocument(doc)}
-                            style={{ maxWidth: '50px', maxHeight: '50px', cursor: 'pointer' }}
+                            style={{
+                              maxWidth: "50px",
+                              maxHeight: "50px",
+                              cursor: "pointer",
+                            }}
                           />
                         ) : (
                           <i className="fas fa-file-alt fa-2x text-muted"></i>
@@ -535,22 +795,19 @@ const CustomerProfile = () => {
                             link.download = doc.fileName || doc.name;
                             link.click();
                           }}
-                          title="Download"
-                        >
+                          title="Download">
                           <i className="fas fa-download"></i>
                         </button>
                         <button
                           className="btn btn-sm btn-light-info me-1"
                           onClick={() => handleViewDocument(doc)}
-                          title="View"
-                        >
+                          title="View">
                           <i className="fas fa-eye"></i>
                         </button>
                         <button
                           className="btn btn-sm btn-light-danger"
                           onClick={() => handleDeleteDocument(doc.id)}
-                          title="Delete"
-                        >
+                          title="Delete">
                           <i className="fas fa-trash"></i>
                         </button>
                       </td>
@@ -573,32 +830,37 @@ const CustomerProfile = () => {
 
       {/* Document Viewer Modal */}
       {viewingDocument && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
           <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">{viewingDocument.name}</h5>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-close"
-                  onClick={closeDocumentModal}
-                ></button>
+                  onClick={closeDocumentModal}></button>
               </div>
               <div className="modal-body text-center">
                 {viewingDocument.fileContent ? (
                   <>
                     {isImageDataUrl(viewingDocument.fileContent) ? (
-                      <img 
-                        src={viewingDocument.fileContent} 
+                      <img
+                        src={viewingDocument.fileContent}
                         alt={viewingDocument.name}
                         className="document-viewer-image"
-                        style={{ maxWidth: '100%', maxHeight: '70vh' }}
+                        style={{ maxWidth: "100%", maxHeight: "70vh" }}
                       />
                     ) : (
                       <div className="p-5">
                         <i className="fas fa-file-alt fa-5x text-muted mb-3"></i>
                         <h4>{viewingDocument.name}</h4>
-                        <p className="text-muted">This document cannot be previewed. Please download to view.</p>
+                        <p className="text-muted">
+                          This document cannot be previewed. Please download to
+                          view.
+                        </p>
                       </div>
                     )}
                   </>
@@ -611,23 +873,22 @@ const CustomerProfile = () => {
                 )}
               </div>
               <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={closeDocumentModal}
-                >
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeDocumentModal}>
                   Close
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary" 
+                <button
+                  type="button"
+                  className="btn btn-primary"
                   onClick={() => {
                     const link = document.createElement("a");
                     link.href = viewingDocument.fileContent;
-                    link.download = viewingDocument.fileName || viewingDocument.name;
+                    link.download =
+                      viewingDocument.fileName || viewingDocument.name;
                     link.click();
-                  }}
-                >
+                  }}>
                   Download
                 </button>
               </div>
@@ -655,8 +916,20 @@ const dummyLoanData = {
   occupation: "Software Engineer",
   address: "123 Main St, City",
   profilePhoto: "",
+  addressAsPerAadhar: "456 Aadhar Nagar, Pune",
+  nave: "Ganesh",
+  haste: "Kiran",
+  purava: "Pune Camp",
   documents: [],
-  paymentRecords: []
+  paymentRecords: [
+    {
+      id: 101,
+      date: "2024-05-01",
+      amount: 12500,
+      status: "Paid",
+      note: "First EMI cleared",
+    },
+  ],
 };
 
 export default CustomerProfile;
