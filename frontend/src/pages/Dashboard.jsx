@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import ApiService from '../services/apiService'; 
+import ApiService from '../services/apiService';
+import * as XLSX from 'xlsx';
 
 const Dashboard = () => {
   const [loans, setLoans] = useState([]);
@@ -92,6 +93,35 @@ const Dashboard = () => {
 
   const recentLoans = filteredLoans.slice(0, 5);
 
+  // Function to handle Excel export
+  const handleExportReport = () => {
+    // Create a new workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Prepare data for Excel
+    const excelData = filteredLoans.map((loan, index) => {
+      const dueDate = getDueDate(loan);
+      return {
+        'S.No': index + 1,
+        'Name': loan.borrowerName || 'N/A',
+        'Interest': `${loan.interestRate || 0}%`,
+        'Amount': `₹${loan.totalLoan || 0}`, // Added rupee symbol here
+        'Due Date': dueDate ? dueDate.toLocaleDateString('en-GB') : '-',
+        'Paid Date': '', // Leave blank for user to fill
+        'Note/file': ''  // Leave blank for user to fill
+      };
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Loans Report");
+    
+    // Generate Excel file and trigger download
+    XLSX.writeFile(wb, "Loans_Report.xlsx");
+  };
+
   if (loading) {
     return (
       <div className="container p-4 dashboard-container">
@@ -126,7 +156,7 @@ const Dashboard = () => {
           </p>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-primary btn-custom">
+          <button className="btn btn-outline-primary btn-custom" onClick={handleExportReport}>
             <i className="fas fa-download me-2"></i>Export Report
           </button>
         </div>
@@ -269,6 +299,7 @@ const Dashboard = () => {
                   <th>Customer Name</th>
                   <th>Amount</th>
                   <th>Interest Rate</th>
+                  <th>EMI</th>
                   <th
                     style={{ cursor: 'pointer', whiteSpace: 'nowrap' }}
                     onClick={sortByDate}
@@ -287,6 +318,11 @@ const Dashboard = () => {
                     const dueDate = getDueDate(loan);
                     const dueDateDisplay = dueDate ? dueDate.toLocaleDateString('en-GB') : '-';
                     const endDateDisplay = new Date(loan.startDate).toLocaleDateString('en-GB');
+                    
+                    // Calculate EMI (simplified calculation)
+                    const emi = loan.totalLoan && loan.interestRate 
+                      ? (loan.totalLoan * (loan.interestRate / 100)) / 12 
+                      : 0;
 
                     return (
                       <tr key={loan.id}>
@@ -298,6 +334,7 @@ const Dashboard = () => {
                         </td>
                         <td>₹{(loan.totalLoan || 0).toLocaleString()}</td>
                         <td>{loan.interestRate || 0}%</td>
+                        <td>₹{emi.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                         <td>{new Date(loan.startDate).toLocaleDateString('en-GB')}</td>
                         <td>{dueDateDisplay}</td>
                         <td>{endDateDisplay}</td>
@@ -338,7 +375,7 @@ const Dashboard = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="8" className="text-center text-muted py-3">
+                    <td colSpan="9" className="text-center text-muted py-3">
                       No loans found for selected dates.
                     </td>
                   </tr>
