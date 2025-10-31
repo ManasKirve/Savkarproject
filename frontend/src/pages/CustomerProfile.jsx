@@ -21,25 +21,43 @@ const CustomerProfile = () => {
     name: "",
     type: "ID Proof",
     file: null,
+    fileName: "",
   });
 
   const [paymentRecords, setPaymentRecords] = useState([
     { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
   ]);
 
+  // State for document preview
+  const [viewingDocument, setViewingDocument] = useState(null);
+
   useEffect(() => {
     const fetchLoan = async () => {
       try {
-        const data = await ApiService.get(`/loans/${id}`);
-        console.log("Fetched loan data:", data);
-        setSelectedLoan(data);
+        // Get all loans first
+        const savkarUserId = "savkar_user_001";
+        const loans = await ApiService.getMyLoans(savkarUserId);
+        
+        // Find the specific loan by ID
+        const loan = loans.find(loan => loan.id === id);
+        
+        if (!loan) {
+          throw new Error("Loan not found");
+        }
+        
+        console.log("Fetched loan data:", loan);
+        setSelectedLoan(loan);
         setProfileFormData({
-          occupation: data.occupation || "",
-          address: data.address || "",
-          profilePhoto: data.profilePhoto || "",
+          occupation: loan.occupation || "",
+          address: loan.address || "",
+          profilePhoto: loan.profilePhoto || "",
         });
-        setDocuments(data.documents || []);
-        setPaymentRecords(data.paymentRecords || [
+        
+        // Load documents for this loan
+        const loanDocuments = await ApiService.getDocumentsByLoanId(id);
+        setDocuments(loanDocuments);
+        
+        setPaymentRecords(loan.paymentRecords || [
           { id: Date.now(), date: "", amount: "", status: "Paid", note: "" },
         ]);
       } catch (err) {
@@ -88,29 +106,67 @@ const CustomerProfile = () => {
   };
 
   const handleDocumentFileChange = (e) => {
-    setNewDocument({ ...newDocument, file: e.target.files[0] });
+    const file = e.target.files[0];
+    if (file) {
+      setNewDocument({ 
+        ...newDocument, 
+        file,
+        fileName: file.name
+      });
+    }
   };
 
-  const handleAddDocument = () => {
-    if (!newDocument.file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const newDoc = {
-        id: Date.now(),
+  const handleAddDocument = async () => {
+    if (!newDocument.file || newDocument.name.trim() === '') return;
+    
+    try {
+      let dataUrl = null;
+      
+      // Read file as data URL
+      const reader = new FileReader();
+      dataUrl = await new Promise(resolve => {
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(newDocument.file);
+      });
+      
+      // Save document to database
+      await ApiService.createDocument({
+        loanId: selectedLoan.id,
         name: newDocument.name,
         type: newDocument.type,
-        fileContent: reader.result,
+        fileContent: dataUrl,
         fileName: newDocument.file.name,
-        uploadedAt: new Date(),
-      };
-      setDocuments([...documents, newDoc]);
-      setNewDocument({ name: "", type: "ID Proof", file: null });
-    };
-    reader.readAsDataURL(newDocument.file);
+        borrowerName: selectedLoan.borrowerName
+      });
+      
+      // Refresh documents
+      const updatedDocuments = await ApiService.getDocumentsByLoanId(selectedLoan.id);
+      setDocuments(updatedDocuments);
+      
+      // Reset form
+      setNewDocument({ 
+        name: '', 
+        type: 'ID Proof', 
+        file: null,
+        fileName: '' 
+      });
+      document.getElementById('document-file-input').value = '';
+    } catch (error) {
+      console.error('Error adding document:', error);
+      alert('Failed to add document. Please try again.');
+    }
   };
 
-  const handleDeleteDocument = (id) => {
-    setDocuments(documents.filter((d) => d.id !== id));
+  const handleDeleteDocument = async (id) => {
+    try {
+      await ApiService.deleteDocument(id);
+      // Refresh documents
+      const updatedDocuments = await ApiService.getDocumentsByLoanId(selectedLoan.id);
+      setDocuments(updatedDocuments);
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Failed to delete document. Please try again.');
+    }
   };
 
   const handleAddPaymentRow = () => {
@@ -138,10 +194,10 @@ const CustomerProfile = () => {
       const updatedData = {
         ...selectedLoan,
         ...profileFormData,
-        documents,
         paymentRecords,
       };
-      await ApiService.put(`/loans/${id}`, updatedData);
+      
+      await ApiService.updateLoan(selectedLoan.id, updatedData);
       alert("Profile updated successfully!");
     } catch (err) {
       console.error(err);
@@ -149,7 +205,28 @@ const CustomerProfile = () => {
     }
   };
 
-  const isImageFile = (filename) => /\.(jpg|jpeg|png|gif)$/i.test(filename);
+  // Function to check if a file is an image
+  const isImageFile = (filename) => {
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+    const extension = filename.split('.').pop().toLowerCase();
+    return imageExtensions.includes(extension);
+  };
+
+  // Function to check if content is an image data URL
+  const isImageDataUrl = (content) => {
+    return content && content.startsWith('data:image/');
+  };
+
+  // Function to view document
+  const handleViewDocument = (document) => {
+    console.log("Viewing document:", document);
+    setViewingDocument(document);
+  };
+
+  // Function to close document modal
+  const closeDocumentModal = () => {
+    setViewingDocument(null);
+  };
 
   if (loading) return <p className="text-center mt-5">Loading profile...</p>;
   if (!selectedLoan)
@@ -159,8 +236,8 @@ const CustomerProfile = () => {
     <div className="container my-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3>Borrower Profile</h3>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          ← Back
+        <button className="btn btn-secondary" onClick={() => navigate('/loan-records')}>
+          ← Back to Loan Records
         </button>
       </div>
 
@@ -198,6 +275,16 @@ const CustomerProfile = () => {
               accept="image/*"
               onChange={handleProfileImageChange}
             />
+            {profileFormData.profilePhoto && (
+              <button 
+                className="position-absolute top-0 end-0 bg-info rounded-circle p-1"
+                style={{ cursor: "pointer" }}
+                onClick={downloadProfileImage}
+                title="Download Profile Image"
+              >
+                <i className="fas fa-download text-white"></i>
+              </button>
+            )}
           </div>
           <h5>{selectedLoan.borrowerName}</h5>
           <input
@@ -275,7 +362,7 @@ const CustomerProfile = () => {
         </div>
       </div>
 
-      {/* ✅ Payment Records Table */}
+      {/* Payment Records Table */}
       <div className="card mb-4">
         <div className="card-header bg-light d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Payment Records</h5>
@@ -391,6 +478,7 @@ const CustomerProfile = () => {
             </div>
             <div className="col-md-3">
               <input
+                id="document-file-input"
                 type="file"
                 className="form-control"
                 onChange={handleDocumentFileChange}
@@ -425,12 +513,13 @@ const CustomerProfile = () => {
                       <td>{doc.name}</td>
                       <td>{doc.type}</td>
                       <td>
-                        {doc.fileContent && isImageFile(doc.fileName || doc.name) ? (
-                          <img
-                            src={doc.fileContent}
+                        {doc.fileContent && (isImageDataUrl(doc.fileContent) || isImageFile(doc.fileName || doc.name)) ? (
+                          <img 
+                            src={doc.fileContent} 
                             alt={doc.name}
-                            className="img-thumbnail"
-                            style={{ width: "50px", height: "50px", objectFit: "cover" }}
+                            className="document-preview"
+                            onClick={() => handleViewDocument(doc)}
+                            style={{ maxWidth: '50px', maxHeight: '50px', cursor: 'pointer' }}
                           />
                         ) : (
                           <i className="fas fa-file-alt fa-2x text-muted"></i>
@@ -446,12 +535,21 @@ const CustomerProfile = () => {
                             link.download = doc.fileName || doc.name;
                             link.click();
                           }}
+                          title="Download"
                         >
                           <i className="fas fa-download"></i>
                         </button>
                         <button
+                          className="btn btn-sm btn-light-info me-1"
+                          onClick={() => handleViewDocument(doc)}
+                          title="View"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                        <button
                           className="btn btn-sm btn-light-danger"
                           onClick={() => handleDeleteDocument(doc.id)}
+                          title="Delete"
                         >
                           <i className="fas fa-trash"></i>
                         </button>
@@ -472,8 +570,93 @@ const CustomerProfile = () => {
           Save Profile
         </button>
       </div>
+
+      {/* Document Viewer Modal */}
+      {viewingDocument && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-xl">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">{viewingDocument.name}</h5>
+                <button 
+                  type="button" 
+                  className="btn-close"
+                  onClick={closeDocumentModal}
+                ></button>
+              </div>
+              <div className="modal-body text-center">
+                {viewingDocument.fileContent ? (
+                  <>
+                    {isImageDataUrl(viewingDocument.fileContent) ? (
+                      <img 
+                        src={viewingDocument.fileContent} 
+                        alt={viewingDocument.name}
+                        className="document-viewer-image"
+                        style={{ maxWidth: '100%', maxHeight: '70vh' }}
+                      />
+                    ) : (
+                      <div className="p-5">
+                        <i className="fas fa-file-alt fa-5x text-muted mb-3"></i>
+                        <h4>{viewingDocument.name}</h4>
+                        <p className="text-muted">This document cannot be previewed. Please download to view.</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="p-5">
+                    <i className="fas fa-file-alt fa-5x text-muted mb-3"></i>
+                    <h4>{viewingDocument.name}</h4>
+                    <p className="text-muted">File content not available.</p>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={closeDocumentModal}
+                >
+                  Close
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = viewingDocument.fileContent;
+                    link.download = viewingDocument.fileName || viewingDocument.name;
+                    link.click();
+                  }}
+                >
+                  Download
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+};
+
+// Dummy data for testing
+const dummyLoanData = {
+  id: "dummy-loan-001",
+  borrowerName: "John Doe",
+  phoneNumber: "9876543210",
+  totalLoan: 100000,
+  paidAmount: 25000,
+  emi: 5000,
+  interestRate: 10,
+  paymentMode: "Bank Transfer",
+  status: "Active",
+  startDate: "2023-01-15",
+  endDate: "2024-12-15",
+  occupation: "Software Engineer",
+  address: "123 Main St, City",
+  profilePhoto: "",
+  documents: [],
+  paymentRecords: []
 };
 
 export default CustomerProfile;

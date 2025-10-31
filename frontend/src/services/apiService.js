@@ -126,7 +126,11 @@ class ApiService {
   // Per-user loans list - OPTIONAL UID
   static async getMyLoans(uid) {
     if (uid) {
-      const response = await this.request(`/users/me/loans?uid=${uid}`);
+      const response = await this.request(`/users/me/loans`, {
+        headers: {
+          'x-dev-uid': uid
+        }
+      });
       // Handle if the response is wrapped in a data object
       return response.data || response;
     } else {
