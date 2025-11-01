@@ -3,7 +3,8 @@ import ApiService from '../services/apiService';
 import * as XLSX from 'xlsx';
 
 const Dashboard = () => {
-  const [loans, setLoans] = useState([]);
+  const [allLoans, setAllLoans] = useState([]); // Store all loans data
+  const [loans, setLoans] = useState([]); // For display purposes
   const [stats, setStats] = useState({
     totalLoans: 0,
     activeLoans: 0,
@@ -42,7 +43,8 @@ const Dashboard = () => {
         
         const loansData = await ApiService.getAllLoans();
         console.log("Dashboard: Loans data received:", loansData);
-        setLoans(loansData);
+        setAllLoans(loansData); // Store all loans
+        setLoans(loansData); // Initially display all loans
       } catch (err) {
         console.error("Dashboard: Error fetching data:", err);
         setError('Failed to load dashboard data. Please try again later.');
@@ -66,46 +68,68 @@ const Dashboard = () => {
     return dueDate;
   };
 
-  // Apply Date Range Filter based on Due Date
-  const filteredLoans = loans.filter((loan) => {
-    const dueDate = getDueDate(loan);
-    if (!fromDate && !toDate) return true;
-    if (!dueDate) return false; // closed loans have no due date
-    const from = fromDate ? new Date(fromDate) : null;
-    const to = toDate ? new Date(toDate) : null;
+  // Helper: calculate EMI (same as in CustomerProfile)
+  const calculateEMI = (loan) => {
+    // Use the emi value from the loan object if available, otherwise calculate it
+    if (loan.emi) {
+      return loan.emi;
+    }
+    
+    // Calculate EMI if not available in the loan object
+    return loan.totalLoan && loan.interestRate 
+      ? (loan.totalLoan * (loan.interestRate / 100)) / 12 
+      : 0;
+  };
 
-    if (from && to) return dueDate >= from && dueDate <= to;
-    if (from) return dueDate >= from;
-    if (to) return dueDate <= to;
-    return true;
-  });
+  // Apply filters and update display
+  useEffect(() => {
+    // Apply Date Range Filter based on Due Date
+    const filtered = allLoans.filter((loan) => {
+      const dueDate = getDueDate(loan);
+      if (!fromDate && !toDate) return true;
+      if (!dueDate) return false; // closed loans have no due date
+      const from = fromDate ? new Date(fromDate) : null;
+      const to = toDate ? new Date(toDate) : null;
 
-  // Sort by Start Date
-  const sortByDate = () => {
-    const sorted = [...filteredLoans].sort((a, b) => {
+      if (from && to) return dueDate >= from && dueDate <= to;
+      if (from) return dueDate >= from;
+      if (to) return dueDate <= to;
+      return true;
+    });
+
+    // Sort by Start Date
+    const sorted = [...filtered].sort((a, b) => {
       const dateA = new Date(a.startDate);
       const dateB = new Date(b.startDate);
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
-    setLoans(sorted);
+
+    setLoans(sorted); // Update display with filtered/sorted data
+  }, [allLoans, fromDate, toDate, sortOrder]);
+
+  // Sort by Start Date
+  const sortByDate = () => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
-  const recentLoans = filteredLoans.slice(0, 5);
+  // Show all loans instead of just recent ones
+  const displayLoans = loans;
 
   // Function to handle Excel export with styling
   const handleExportReport = () => {
     // Create a new workbook
     const wb = XLSX.utils.book_new();
     
-    // Prepare data for Excel with separate Note and File columns
-    const excelData = filteredLoans.map((loan, index) => {
+    // Prepare data for Excel with the required columns
+    const excelData = loans.map((loan, index) => {
       const dueDate = getDueDate(loan);
+      // Calculate EMI using the same method as in CustomerProfile
+      const emi = calculateEMI(loan);
+        
       return {
         'S.No': index + 1,
         'Name': loan.borrowerName || 'N/A',
-        'Interest': `${loan.interestRate || 0}%`,
-        'Amount': loan.totalLoan || 0,
+        'EMI': emi,
         'Due Date': dueDate ? dueDate.toLocaleDateString('en-GB') : '-',
         'Paid Date': '', // Leave blank for user to fill
         'Note': '',      // Leave blank for user to fill
@@ -129,21 +153,10 @@ const Dashboard = () => {
       }
     };
     
-    const amountStyle = {
+    const emiStyle = {
       font: { bold: true, sz: 11, color: { rgb: "000000" } },
       fill: { fgColor: { rgb: "C6E0B4" } }, // Light green
       numFmt: '"₹"#,##0.00',
-      border: {
-        top: { style: "thin", color: { rgb: "D9D9D9" } },
-        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-        left: { style: "thin", color: { rgb: "D9D9D9" } },
-        right: { style: "thin", color: { rgb: "D9D9D9" } }
-      }
-    };
-    
-    const interestStyle = {
-      font: { sz: 11, color: { rgb: "7030A0" } },
-      fill: { fgColor: { rgb: "E2D9F3" } }, // Light purple
       border: {
         top: { style: "thin", color: { rgb: "D9D9D9" } },
         bottom: { style: "thin", color: { rgb: "D9D9D9" } },
@@ -234,28 +247,24 @@ const Dashboard = () => {
         }
       };
       
-      // Interest column (index 2)
-      const interestCell = XLSX.utils.encode_cell({ r: R, c: 2 });
-      if (ws[interestCell]) ws[interestCell].s = interestStyle;
+      // EMI column (index 2)
+      const emiCell = XLSX.utils.encode_cell({ r: R, c: 2 });
+      if (ws[emiCell]) ws[emiCell].s = emiStyle;
       
-      // Amount column (index 3) - Important column with color
-      const amountCell = XLSX.utils.encode_cell({ r: R, c: 3 });
-      if (ws[amountCell]) ws[amountCell].s = amountStyle;
-      
-      // Due Date column (index 4) - Important column with color
-      const dueDateCell = XLSX.utils.encode_cell({ r: R, c: 4 });
+      // Due Date column (index 3)
+      const dueDateCell = XLSX.utils.encode_cell({ r: R, c: 3 });
       if (ws[dueDateCell]) ws[dueDateCell].s = dueDateStyle;
       
-      // Paid Date column (index 5)
-      const paidDateCell = XLSX.utils.encode_cell({ r: R, c: 5 });
+      // Paid Date column (index 4)
+      const paidDateCell = XLSX.utils.encode_cell({ r: R, c: 4 });
       if (ws[paidDateCell]) ws[paidDateCell].s = paidDateStyle;
       
-      // Note column (index 6)
-      const noteCell = XLSX.utils.encode_cell({ r: R, c: 6 });
+      // Note column (index 5)
+      const noteCell = XLSX.utils.encode_cell({ r: R, c: 5 });
       if (ws[noteCell]) ws[noteCell].s = noteStyle;
       
-      // File column (index 7)
-      const fileCell = XLSX.utils.encode_cell({ r: R, c: 7 });
+      // File column (index 6)
+      const fileCell = XLSX.utils.encode_cell({ r: R, c: 6 });
       if (ws[fileCell]) ws[fileCell].s = fileStyle;
     }
     
@@ -263,8 +272,7 @@ const Dashboard = () => {
     ws['!cols'] = [
       { wch: 6 },  // S.No
       { wch: 25 }, // Name
-      { wch: 10 }, // Interest
-      { wch: 15 }, // Amount
+      { wch: 15 }, // EMI
       { wch: 12 }, // Due Date
       { wch: 12 }, // Paid Date
       { wch: 20 }, // Note
@@ -275,7 +283,6 @@ const Dashboard = () => {
     XLSX.utils.book_append_sheet(wb, ws, "Loans Report");
     
     // Generate Excel file and trigger download
-    // Fixed: Use writeBuffer for proper styling support
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
@@ -422,10 +429,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Loans Table */}
+      {/* All Loans Table */}
       <div className="card table-container-custom">
         <div className="card-header table-header d-flex justify-content-between align-items-center">
-          <h5 className="mb-0">Recent Loans</h5>
+          <h5 className="mb-0">All Loans</h5>
 
           {/* Date Filter */}
           <div className="d-flex align-items-center gap-2">
@@ -481,16 +488,14 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {recentLoans.length > 0 ? (
-                  recentLoans.map((loan) => {
+                {displayLoans.length > 0 ? (
+                  displayLoans.map((loan) => {
                     const dueDate = getDueDate(loan);
                     const dueDateDisplay = dueDate ? dueDate.toLocaleDateString('en-GB') : '-';
                     const endDateDisplay = new Date(loan.startDate).toLocaleDateString('en-GB');
                     
-                    // Calculate EMI (simplified calculation)
-                    const emi = loan.totalLoan && loan.interestRate 
-                      ? (loan.totalLoan * (loan.interestRate / 100)) / 12 
-                      : 0;
+                    // Calculate EMI using the same method as in CustomerProfile
+                    const emi = calculateEMI(loan);
 
                     return (
                       <tr key={loan.id}>
@@ -502,7 +507,7 @@ const Dashboard = () => {
                         </td>
                         <td>₹{(loan.totalLoan || 0).toLocaleString()}</td>
                         <td>{loan.interestRate || 0}%</td>
-                        <td>₹{emi.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                        <td>₹{emi.toLocaleString(undefined, { maximumFractionDigits: 10 })}</td>
                         <td>{new Date(loan.startDate).toLocaleDateString('en-GB')}</td>
                         <td>{dueDateDisplay}</td>
                         <td>{endDateDisplay}</td>
