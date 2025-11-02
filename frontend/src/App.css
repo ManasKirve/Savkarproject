@@ -1250,7 +1250,6 @@ small {
 
 /* Form Controls */
 .form-control, .form-select {
-  border-radius: 0.5rem !important;
   border: 1px solid var(--gray-300) !important;
   padding: 0.75rem 1rem !important;
   font-size: 0.875rem !important;
@@ -1264,7 +1263,7 @@ small {
 }
 
 .input-group-text {
-  border-radius: 0.5rem !important;
+  border-radius: 0.5rem 0 0 0.5rem !important;
   border: 1px solid var(--gray-300) !important;
   background-color: var(--gray-50) !important;
   color: var(--gray-600) !important;

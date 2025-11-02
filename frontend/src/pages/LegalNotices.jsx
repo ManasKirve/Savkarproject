@@ -189,12 +189,21 @@ const LegalNotices = () => {
   return (
     <div className="container-fluid p-4" style={{ paddingTop: "20px" }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Legal Notices</h2>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowAddModal(true)}>
-          <i className="fas fa-plus me-2"></i>Create Notice
-        </button>
+        <h2 className="mb-0 fw-bold">Legal Notices</h2>
+
+        <div className="d-flex gap-2">
+          <button
+            className="btn btn-primary d-flex align-items-center"
+            onClick={() => setShowAddModal(true)}>
+            <i className="fas fa-plus me-2"></i>
+            Create Notice
+          </button>
+
+          <button className="btn btn-outline-primary d-flex align-items-center">
+            <i className="fas fa-download me-2"></i>
+            Export
+          </button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -266,11 +275,6 @@ const LegalNotices = () => {
             <option value="Pending">Pending</option>
             <option value="Resolved">Resolved</option>
           </select>
-        </div>
-        <div className="col-md-2">
-          <button className="btn btn-outline-primary w-100">
-            <i className="fas fa-download me-2"></i>Export
-          </button>
         </div>
       </div>
 

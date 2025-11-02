@@ -52,3 +52,22 @@
 .progress-bar {
   transition: width 0.6s ease;
 }
+
+.wth-250 {
+  width: 250px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.wth-250:hover {
+  overflow: visible;
+  white-space: normal;
+  background-color: #f8f9fa;
+  z-index: 1;
+  position: relative;
+}
