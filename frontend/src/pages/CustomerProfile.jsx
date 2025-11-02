@@ -385,7 +385,7 @@ const CustomerProfile = () => {
                 placeholder="Enter address as per Aadhar"
                 value={
                   profileFormData.addressAsPerAadhar ||
-                  "Pune, Maharashtra, India"
+                  ""
                 }
                 onChange={(e) =>
                   setProfileFormData({
@@ -403,7 +403,7 @@ const CustomerProfile = () => {
                 type="text"
                 className="form-control"
                 placeholder="Enter Nave"
-                value={profileFormData.nave || "Ganesh Nagar"}
+                value={profileFormData.nave || ""}
                 onChange={(e) =>
                   setProfileFormData({
                     ...profileFormData,
@@ -420,7 +420,7 @@ const CustomerProfile = () => {
                 type="text"
                 className="form-control"
                 placeholder="Enter Haste"
-                value={profileFormData.haste || "Patil"}
+                value={profileFormData.haste || ""}
                 onChange={(e) =>
                   setProfileFormData({
                     ...profileFormData,
@@ -437,7 +437,7 @@ const CustomerProfile = () => {
                 type="text"
                 className="form-control"
                 placeholder="Enter Purava"
-                value={profileFormData.purava || "Document Verified"}
+                value={profileFormData.purava || ""}
                 onChange={(e) =>
                   setProfileFormData({
                     ...profileFormData,
@@ -461,7 +461,7 @@ const CustomerProfile = () => {
               type="text"
               className="form-control"
               placeholder="Enter Jamindar 1 Name"
-              value={profileFormData.jamindar1Name || "Ramesh Shinde"}
+              value={profileFormData.jamindar1Name || ""}
               onChange={(e) =>
                 setProfileFormData({
                   ...profileFormData,
@@ -480,7 +480,7 @@ const CustomerProfile = () => {
               placeholder="Enter Residence Address"
               value={
                 profileFormData.jamindar1ResidenceAddress ||
-                "Flat No. 12, Laxmi Nagar, Pune"
+                ""
               }
               onChange={(e) =>
                 setProfileFormData({
@@ -500,7 +500,7 @@ const CustomerProfile = () => {
               placeholder="Enter Permanent Address"
               value={
                 profileFormData.jamindar1PermanentAddress ||
-                "A/P Satara, Maharashtra"
+                ""
               }
               onChange={(e) =>
                 setProfileFormData({
@@ -518,7 +518,7 @@ const CustomerProfile = () => {
               type="text"
               className="form-control"
               placeholder="Enter Mobile No."
-              value={profileFormData.jamindar1Mobile || "9876543210"}
+              value={profileFormData.jamindar1Mobile || ""}
               onChange={(e) =>
                 setProfileFormData({
                   ...profileFormData,
@@ -541,7 +541,7 @@ const CustomerProfile = () => {
               type="text"
               className="form-control"
               placeholder="Enter Jamindar 2 Name"
-              value={profileFormData.jamindar2Name || "Suresh Pawar"}
+              value={profileFormData.jamindar2Name || ""}
               onChange={(e) =>
                 setProfileFormData({
                   ...profileFormData,
@@ -560,7 +560,7 @@ const CustomerProfile = () => {
               placeholder="Enter Residence Address"
               value={
                 profileFormData.jamindar2ResidenceAddress ||
-                "Plot No. 21, Shivaji Nagar, Kolhapur"
+                ""
               }
               onChange={(e) =>
                 setProfileFormData({
@@ -580,7 +580,7 @@ const CustomerProfile = () => {
               placeholder="Enter Permanent Address"
               value={
                 profileFormData.jamindar2PermanentAddress ||
-                "Kolhapur, Maharashtra"
+                ""
               }
               onChange={(e) =>
                 setProfileFormData({
@@ -598,7 +598,7 @@ const CustomerProfile = () => {
               type="text"
               className="form-control"
               placeholder="Enter Mobile No."
-              value={profileFormData.jamindar2Mobile || "9876501234"}
+              value={profileFormData.jamindar2Mobile || ""}
               onChange={(e) =>
                 setProfileFormData({
                   ...profileFormData,
