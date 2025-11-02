@@ -18,6 +18,7 @@ const CustomerProfile = () => {
     nave: "",
     haste: "",
     purava: "",
+    jamindars: [],
   });
 
   const [documents, setDocuments] = useState([]);
@@ -53,6 +54,7 @@ const CustomerProfile = () => {
           nave: loan.nave || "",
           haste: loan.haste || "",
           purava: loan.purava || "",
+          jamindars: loan.jamindars || [],
         });
 
         const loanDocuments = await ApiService.getDocumentsByLoanId(id);
@@ -76,6 +78,7 @@ const CustomerProfile = () => {
           nave: dummyLoanData.nave,
           haste: dummyLoanData.haste,
           purava: dummyLoanData.purava,
+          jamindars: dummyLoanData.jamindars,
         });
         setDocuments(dummyLoanData.documents);
         setPaymentRecords(dummyLoanData.paymentRecords);
@@ -102,6 +105,36 @@ const CustomerProfile = () => {
     link.href = profileFormData.profilePhoto;
     link.download = `${selectedLoan.borrowerName}-profile.jpg`;
     link.click();
+  };
+
+  const handleAddJamindar = () => {
+    const newJamindar = {
+      id: Date.now(),
+      name: "",
+      residenceAddress: "",
+      permanentAddress: "",
+      mobile: "",
+    };
+    setProfileFormData({
+      ...profileFormData,
+      jamindars: [...profileFormData.jamindars, newJamindar],
+    });
+  };
+
+  const handleRemoveJamindar = (id) => {
+    setProfileFormData({
+      ...profileFormData,
+      jamindars: profileFormData.jamindars.filter((j) => j.id !== id),
+    });
+  };
+
+  const handleJamindarChange = (id, field, value) => {
+    setProfileFormData({
+      ...profileFormData,
+      jamindars: profileFormData.jamindars.map((j) =>
+        j.id === id ? { ...j, [field]: value } : j
+      ),
+    });
   };
 
   const handleDocumentFileChange = (e) => {
@@ -241,164 +274,199 @@ const CustomerProfile = () => {
 
       {error && <p className="text-warning text-center mb-3">{error}</p>}
 
-      <div className="row">
-        {/* Profile Column */}
-        <div className="col-md-4 text-center mb-4">
-          <div
-            className="mx-auto mb-3 position-relative"
-            style={{ width: "120px", height: "120px" }}>
-            <img
-              src={
-                profileFormData.profilePhoto ||
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                  selectedLoan.borrowerName || "User"
-                )}&background=0D8ABC&color=fff&size=120`
-              }
-              alt="Profile"
-              className="rounded-circle img-fluid"
-              style={{ objectFit: "cover", width: "100%", height: "100%" }}
-            />
-            <label
-              htmlFor="profile-upload"
-              className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-1"
-              style={{ cursor: "pointer" }}>
-              <i className="fas fa-camera text-white"></i>
-            </label>
-            <input
-              id="profile-upload"
-              type="file"
-              className="d-none"
-              accept="image/*"
-              onChange={handleProfileImageChange}
-            />
-            {profileFormData.profilePhoto && (
-              <button
-                className="position-absolute top-0 end-0 bg-info rounded-circle p-1"
-                style={{ cursor: "pointer" }}
-                onClick={downloadProfileImage}
-                title="Download Profile Image">
-                <i className="fas fa-download text-white"></i>
-              </button>
-            )}
-          </div>
-
-          <h5>{selectedLoan.borrowerName}</h5>
-          <input
-            type="text"
-            className="form-control mb-2 text-center"
-            placeholder="Occupation"
-            value={profileFormData.occupation}
-            onChange={(e) =>
-              setProfileFormData({
-                ...profileFormData,
-                occupation: e.target.value,
-              })
-            }
-          />
-          <input
-            type="text"
-            className="form-control text-center"
-            placeholder="Address"
-            value={profileFormData.address}
-            onChange={(e) =>
-              setProfileFormData({
-                ...profileFormData,
-                address: e.target.value,
-              })
-            }
-          />
-          <p className="text-muted mt-2">{selectedLoan.phoneNumber || "N/A"}</p>
-        </div>
-
-        {/* Loan Details Column */}
-        <div className="col-md-8">
-          <div className="card mb-4">
-            <div className="card-header bg-light">
-              <h5 className="mb-0">Loan Details</h5>
-            </div>
-            <div className="card-body">
-              <div className="row">
-                <div className="col-md-6 mb-2">
-                  <strong>Total Loan:</strong> ₹
-                  {selectedLoan.totalLoan?.toLocaleString() || 0}
-                </div>
-                <div className="col-md-6 mb-2">
-                  <strong>Paid Amount:</strong> ₹
-                  {selectedLoan.paidAmount?.toLocaleString() || 0}
-                </div>
-                <div className="col-md-6 mb-2">
-                  <strong>EMI:</strong> ₹
-                  {selectedLoan.emi?.toLocaleString() || 0}
-                </div>
-                <div className="col-md-6 mb-2">
-                  <strong>Interest Rate:</strong>{" "}
-                  {selectedLoan.interestRate || 0}%
-                </div>
-                <div className="col-md-6 mb-2">
-                  <strong>Payment Mode:</strong>{" "}
-                  {selectedLoan.paymentMode || "N/A"}
-                </div>
-                <div className="col-md-6 mb-2">
-                  <strong>Status:</strong>{" "}
-                  <span
-                    className={`badge ${
-                      selectedLoan.status === "Active"
-                        ? "bg-success"
-                        : selectedLoan.status === "Closed"
-                        ? "bg-secondary"
-                        : "bg-warning"
-                    }`}>
-                    {selectedLoan.status || "N/A"}
-                  </span>
-                </div>
-                <div className="col-md-6 mb-2">
-                  <strong>Start Date:</strong>{" "}
-                  {selectedLoan.startDate
-                    ? new Date(selectedLoan.startDate).toLocaleDateString()
-                    : "N/A"}
-                </div>
-                <div className="col-md-6 mb-2">
-                  <strong>End Date:</strong>{" "}
-                  {selectedLoan.endDate
-                    ? new Date(selectedLoan.endDate).toLocaleDateString()
-                    : "N/A"}
-                </div>
-              </div>
-
-              {/* ✅ Added New Fields */}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card mb-4">
-        <div className="m-4">
-          <div className="row">
-            {/* Address as per Aadhar */}
-            <div className="col-md-6 mb-3">
-              <label className="form-label fw-bold">
-                Address as per Aadhar
+      {/* ---------- HEADER PROFILE CARD ---------- */}
+      <div className="card border-0 shadow-sm mb-4 rounded-3 p-3">
+        <div className="row align-items-center g-3">
+          {/* LEFT: Profile Section */}
+          <div className="col-md-3 text-center">
+            <div className="position-relative d-inline-block mb-3">
+              <img
+                src={
+                  profileFormData.profilePhoto ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    selectedLoan.borrowerName || "User"
+                  )}&background=0D8ABC&color=fff&size=120`
+                }
+                alt="Profile"
+                className="rounded-circle border border-2 shadow-sm"
+                style={{
+                  width: "120px",
+                  height: "120px",
+                  objectFit: "cover",
+                }}
+              />
+              <label
+                htmlFor="profile-upload"
+                className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-2 shadow-sm"
+                style={{ cursor: "pointer" }}>
+                <i className="fas fa-camera text-white"></i>
               </label>
+              <input
+                id="profile-upload"
+                type="file"
+                className="d-none"
+                accept="image/*"
+                onChange={handleProfileImageChange}
+              />
+              {profileFormData.profilePhoto && (
+                <button
+                  className="position-absolute top-0 end-0 bg-success rounded-circle p-2 border-0 shadow-sm"
+                  onClick={downloadProfileImage}
+                  title="Download"
+                  style={{ cursor: "pointer" }}>
+                  <i className="fas fa-download text-white"></i>
+                </button>
+              )}
+            </div>
+
+            {/* Name and Phone below photo */}
+            <div>
+              <h5 className="fw-bold text-primary mb-1">
+                {selectedLoan.borrowerName || "Borrower Name"}
+              </h5>
+              <p className="text-muted mb-0">
+                {selectedLoan.phoneNumber || "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* CENTER: Occupation + Address */}
+          <div className="col-md-5">
+            <div className="mb-3">
+              <label className="form-label fw-semibold small">Occupation</label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="Enter address as per Aadhar"
-                value={
-                  profileFormData.addressAsPerAadhar ||
-                  ""
-                }
+                placeholder="Occupation"
+                value={profileFormData.occupation || ""}
                 onChange={(e) =>
                   setProfileFormData({
                     ...profileFormData,
-                    addressAsPerAadhar: e.target.value,
+                    occupation: e.target.value,
                   })
                 }
               />
             </div>
 
-            {/* Nave */}
-            <div className="col-md-6 mb-3">
-              <label className="form-label fw-bold">Nave</label>
+            <div>
+              <label className="form-label fw-semibold small">
+                Residential Address
+              </label>
+              <textarea
+                className="form-control"
+                rows="3"
+                placeholder="Enter Residential Address"
+                value={profileFormData.address || ""}
+                onChange={(e) =>
+                  setProfileFormData({
+                    ...profileFormData,
+                    address: e.target.value,
+                  })
+                }></textarea>
+            </div>
+          </div>
+
+          {/* RIGHT: Loan Summary */}
+          <div className="col-md-4">
+            <h6 className="fw-semibold text-secondary mb-2">Loan Summary</h6>
+            <ul className="list-group shadow-sm">
+              <li className="list-group-item d-flex justify-content-between">
+                <span>Total Loan:</span>
+                <strong>
+                  ₹{selectedLoan.totalLoan?.toLocaleString() || "0"}
+                </strong>
+              </li>
+              <li className="list-group-item d-flex justify-content-between">
+                <span>Paid Amount:</span>
+                <strong>
+                  ₹{selectedLoan.paidAmount?.toLocaleString() || "0"}
+                </strong>
+              </li>
+              <li className="list-group-item d-flex justify-content-between">
+                <span>EMI:</span>
+                <strong>₹{selectedLoan.emi?.toLocaleString() || "0"}</strong>
+              </li>
+              <li className="list-group-item d-flex justify-content-between">
+                <span>Interest Rate:</span>
+                <strong>{selectedLoan.interestRate || 0}%</strong>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* ---------- DETAILED INFORMATION SECTION ---------- */}
+      <div className="card border-0 shadow-sm rounded-3">
+        <div className="card-header bg-light">
+          <h6 className="fw-bold text-primary mb-0">Customer Details</h6>
+        </div>
+
+        <div className="card-body">
+          <div className="row g-4 align-items-center">
+            {/* ---------- Payment Mode ---------- */}
+            <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
+              <label
+                className="form-label fw-semibold text-muted mb-0"
+                style={{ width: "40%" }}>
+                Payment Mode
+              </label>
+              <div className="flex-grow-1 text-center text-dark fw-medium">
+                {selectedLoan.paymentMode || "N/A"}
+              </div>
+            </div>
+
+            {/* ---------- Status ---------- */}
+            <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
+              <label
+                className="form-label fw-semibold text-muted mb-0"
+                style={{ width: "40%" }}>
+                Status
+              </label>
+              <div className="flex-grow-1 text-center">
+                <span
+                  className={`badge px-3 py-2 ${
+                    selectedLoan.status === "Active"
+                      ? "bg-success"
+                      : selectedLoan.status === "Closed"
+                      ? "bg-secondary"
+                      : "bg-warning"
+                  }`}>
+                  {selectedLoan.status || "N/A"}
+                </span>
+              </div>
+            </div>
+
+            {/* ---------- Start Date ---------- */}
+            <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
+              <label
+                className="form-label fw-semibold text-muted mb-0"
+                style={{ width: "40%" }}>
+                Start Date
+              </label>
+              <div className="flex-grow-1 text-center text-dark fw-medium">
+                {selectedLoan.startDate
+                  ? new Date(selectedLoan.startDate).toLocaleDateString()
+                  : "N/A"}
+              </div>
+            </div>
+
+            {/* ---------- End Date ---------- */}
+            <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
+              <label
+                className="form-label fw-semibold text-muted mb-0"
+                style={{ width: "40%" }}>
+                End Date
+              </label>
+              <div className="flex-grow-1 text-center text-dark fw-medium">
+                {selectedLoan.endDate
+                  ? new Date(selectedLoan.endDate).toLocaleDateString()
+                  : "N/A"}
+              </div>
+            </div>
+
+            {/* ---------- Nave ---------- */}
+            <div className="col-md-6">
+              <label className="form-label fw-semibold text-muted">Nave</label>
               <input
                 type="text"
                 className="form-control"
@@ -413,9 +481,9 @@ const CustomerProfile = () => {
               />
             </div>
 
-            {/* Haste */}
-            <div className="col-md-6 mb-3">
-              <label className="form-label fw-bold">Haste</label>
+            {/* ---------- Haste ---------- */}
+            <div className="col-md-6">
+              <label className="form-label fw-semibold text-muted">Haste</label>
               <input
                 type="text"
                 className="form-control"
@@ -430,9 +498,11 @@ const CustomerProfile = () => {
               />
             </div>
 
-            {/* Purava */}
-            <div className="col-md-6 mb-3">
-              <label className="form-label fw-bold">Purava</label>
+            {/* ---------- Purava ---------- */}
+            <div className="col-md-6">
+              <label className="form-label fw-semibold text-muted">
+                Purava
+              </label>
               <input
                 type="text"
                 className="form-control"
@@ -446,168 +516,129 @@ const CustomerProfile = () => {
                 }
               />
             </div>
+
+            {/* ---------- Permanent Address ---------- */}
+            <div className="col-md-6">
+              <label className="form-label fw-semibold text-muted">
+                Permanent Address
+              </label>
+              <textarea
+                className="form-control"
+                rows="3"
+                placeholder="Enter Permanent Address"
+                value={profileFormData.permanentAddress || ""}
+                onChange={(e) =>
+                  setProfileFormData({
+                    ...profileFormData,
+                    permanentAddress: e.target.value,
+                  })
+                }></textarea>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ----------- Jamindar 1 Section ----------- */}
+      {/* ✅ Jamindar Section */}
       <div className="card mt-4 p-3">
-        <h6 className="fw-bold mb-3">Jamindar 1 Details</h6>
-        <div className="row">
-          {/* Jamindar 1 Name */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Jamindar 1 Name</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Jamindar 1 Name"
-              value={profileFormData.jamindar1Name || ""}
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar1Name: e.target.value,
-                })
-              }
-            />
-          </div>
-
-          {/* Jamindar 1 Residence Address */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Residence Address</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Residence Address"
-              value={
-                profileFormData.jamindar1ResidenceAddress ||
-                ""
-              }
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar1ResidenceAddress: e.target.value,
-                })
-              }
-            />
-          </div>
-
-          {/* Jamindar 1 Permanent Address */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Permanent Address</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Permanent Address"
-              value={
-                profileFormData.jamindar1PermanentAddress ||
-                ""
-              }
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar1PermanentAddress: e.target.value,
-                })
-              }
-            />
-          </div>
-
-          {/* Jamindar 1 Mobile Number */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Mobile No.</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Mobile No."
-              value={profileFormData.jamindar1Mobile || ""}
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar1Mobile: e.target.value,
-                })
-              }
-            />
-          </div>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h6 className="fw-bold mb-0">Jamindar Details</h6>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={handleAddJamindar}>
+            + Add Jamindar
+          </button>
         </div>
-      </div>
 
-      {/* ----------- Jamindar 2 Section ----------- */}
-      <div className="card mt-4 p-3">
-        <h6 className="fw-bold mb-3">Jamindar 2 Details</h6>
-        <div className="row">
-          {/* Jamindar 2 Name */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Jamindar 2 Name</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Jamindar 2 Name"
-              value={profileFormData.jamindar2Name || ""}
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar2Name: e.target.value,
-                })
-              }
-            />
-          </div>
+        {profileFormData.jamindars.length === 0 && (
+          <p className="text-muted">No Jamindars added yet.</p>
+        )}
 
-          {/* Jamindar 2 Residence Address */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Residence Address</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Residence Address"
-              value={
-                profileFormData.jamindar2ResidenceAddress ||
-                ""
-              }
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar2ResidenceAddress: e.target.value,
-                })
-              }
-            />
-          </div>
+        {profileFormData.jamindars.map((jamindar, index) => (
+          <div key={jamindar.id} className="border rounded p-3 mb-3 shadow-sm">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h6 className="fw-bold mb-0 text-primary">
+                Jamindar {index + 1}
+              </h6>
+              <button
+                className="btn btn-sm btn-danger"
+                onClick={() => handleRemoveJamindar(jamindar.id)}>
+                − Remove
+              </button>
+            </div>
 
-          {/* Jamindar 2 Permanent Address */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Permanent Address</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Permanent Address"
-              value={
-                profileFormData.jamindar2PermanentAddress ||
-                ""
-              }
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar2PermanentAddress: e.target.value,
-                })
-              }
-            />
-          </div>
+            {/* First Row: Name and Mobile */}
+            <div className="row g-3 mb-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold text-muted">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter Jamindar Name"
+                  value={jamindar.name}
+                  onChange={(e) =>
+                    handleJamindarChange(jamindar.id, "name", e.target.value)
+                  }
+                />
+              </div>
 
-          {/* Jamindar 2 Mobile Number */}
-          <div className="col-md-6 mb-3">
-            <label className="form-label fw-bold">Mobile No.</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter Mobile No."
-              value={profileFormData.jamindar2Mobile || ""}
-              onChange={(e) =>
-                setProfileFormData({
-                  ...profileFormData,
-                  jamindar2Mobile: e.target.value,
-                })
-              }
-            />
+              <div className="col-md-6">
+                <label className="form-label fw-semibold text-muted">
+                  Mobile No.
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter Mobile Number"
+                  value={jamindar.mobile}
+                  onChange={(e) =>
+                    handleJamindarChange(jamindar.id, "mobile", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Second Row: Residence and Permanent Address */}
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold text-muted">
+                  Residence Address
+                </label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  placeholder="Enter Residence Address"
+                  value={jamindar.residenceAddress}
+                  onChange={(e) =>
+                    handleJamindarChange(
+                      jamindar.id,
+                      "residenceAddress",
+                      e.target.value
+                    )
+                  }></textarea>
+              </div>
+
+              <div className="col-md-6">
+                <label className="form-label fw-semibold text-muted">
+                  Permanent Address
+                </label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  placeholder="Enter Permanent Address"
+                  value={jamindar.permanentAddress}
+                  onChange={(e) =>
+                    handleJamindarChange(
+                      jamindar.id,
+                      "permanentAddress",
+                      e.target.value
+                    )
+                  }></textarea>
+              </div>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
       {/* Payment Records Table */}
@@ -928,6 +959,15 @@ const dummyLoanData = {
       amount: 12500,
       status: "Paid",
       note: "First EMI cleared",
+    },
+  ],
+  jamindars: [
+    {
+      id: 1,
+      name: "",
+      residenceAddress: "",
+      permanentAddress: "",
+      mobile: "",
     },
   ],
 };
