@@ -129,7 +129,7 @@ const Dashboard = () => {
       return {
         'S.No': index + 1,
         'Name': loan.borrowerName || 'N/A',
-        'EMI': emi,
+        'Amount': emi,
         'Due Date': dueDate ? dueDate.toLocaleDateString('en-GB') : '-',
         'Paid Date': '', // Leave blank for user to fill
         'Note': '',      // Leave blank for user to fill
