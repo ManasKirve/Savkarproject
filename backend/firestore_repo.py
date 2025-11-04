@@ -4,10 +4,13 @@ from typing import Dict, Any, List
 import uuid
 from google.cloud.firestore_v1 import Transaction
 import logging
+import re
 from models import (
     LoanRecord, LoanCreate, LoanUpdate,
     Document, DocumentCreate,
-    LegalNotice, NoticeCreate, NoticeUpdate
+    LegalNotice, NoticeCreate, NoticeUpdate,
+    Profile, ProfileCreate, ProfileUpdate,
+    Jamindar
 )
 
 # Set up logging
@@ -16,6 +19,32 @@ logger = logging.getLogger(__name__)
 
 # Fixed user ID for the savkar
 SAVKAR_USER_ID = "savkar_user_001"
+
+# Helper functions for key conversion
+def camel_to_snake(name):
+    """Convert camelCase to snake_case"""
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+def convert_jamindar_keys(data, conversion_func):
+    """Convert keys in Jamindar objects"""
+    if not isinstance(data, list):
+        return data
+        
+    converted = []
+    for jamindar in data:
+        if isinstance(jamindar, dict):
+            converted_jamindar = {}
+            for key, value in jamindar.items():
+                converted_key = conversion_func(key)
+                # Convert id to string if it's a number
+                if key == 'id' and isinstance(value, (int, float)):
+                    value = str(value)
+                converted_jamindar[converted_key] = value
+            converted.append(converted_jamindar)
+        else:
+            converted.append(jamindar)
+    return converted
 
 def _loans_col(uid):
     try:
@@ -37,6 +66,17 @@ def _docs_col(uid):
         return db.collection('users').document(uid).collection('documents')
     except Exception as e:
         logger.error(f"Error getting documents collection: {e}")
+        return None
+
+def _profiles_col(uid):
+    try:
+        _, db = init_firebase()
+        if not db:
+            logger.error("Failed to initialize Firebase")
+            return None
+        return db.collection('users').document(uid).collection('profiles')
+    except Exception as e:
+        logger.error(f"Error getting profiles collection: {e}")
         return None
 
 def _notices_col(uid):
@@ -71,8 +111,13 @@ def ensure_user_exists(uid):
         return False
 
 def _convert_keys_to_camel_case(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert snake_case keys to camelCase"""
     if not data:
+        return data
+        
+    if isinstance(data, list):
+        return [_convert_keys_to_camel_case(item) for item in data]
+    
+    if not isinstance(data, dict):
         return data
         
     converted = {}
@@ -82,9 +127,16 @@ def _convert_keys_to_camel_case(data: Dict[str, Any]) -> Dict[str, Any]:
             camel_key = parts[0] + ''.join(part.capitalize() for part in parts[1:])
         else:
             camel_key = key
-        converted[camel_key] = value
+            
+        # Recursively convert nested objects
+        if isinstance(value, dict):
+            converted[camel_key] = _convert_keys_to_camel_case(value)
+        elif isinstance(value, list):
+            converted[camel_key] = [_convert_keys_to_camel_case(item) if isinstance(item, dict) else item for item in value]
+        else:
+            converted[camel_key] = value
+            
     return converted
-
 def get_loans_for_user(uid: str) -> List[Dict[str, Any]]:
     """Get all loans for a specific user"""
     try:
@@ -331,6 +383,157 @@ def delete_document_for_user(uid: str, doc_id: str):
     except Exception as e:
         logger.error(f"Error deleting document {doc_id} for user {uid}: {e}")
         raise Exception(f"Failed to delete document for user {uid}: {e}")
+
+def get_profile_for_loan(uid: str, loan_id: str) -> Dict[str, Any]:
+    """Get profile for a specific loan"""
+    try:
+        # First ensure the user exists
+        if not ensure_user_exists(uid):
+            logger.error(f"Failed to ensure user {uid} exists")
+            return None
+            
+        col = _profiles_col(uid)
+        if not col:
+            logger.error(f"Failed to get profiles collection for user {uid}")
+            return None
+            
+        # Convert loan_id to string for consistent querying
+        loan_id_str = str(loan_id)
+        logger.info(f"Querying for profile with loan_id: {loan_id_str}")
+        
+        q = col.where('loan_id', '==', loan_id_str).stream()
+        profiles = []
+        for d in q:
+            data = d.to_dict()
+            if data:
+                logger.info(f"Found profile document: {data}")
+                data['id'] = d.id
+                if 'created_at' in data and hasattr(data.get('created_at'), 'isoformat'):
+                    data['created_at'] = data['created_at'].isoformat()
+                if 'updated_at' in data and hasattr(data.get('updated_at'), 'isoformat'):
+                    data['updated_at'] = data['updated_at'].isoformat()
+                
+                # Convert snake_case keys to camelCase
+                converted_data = _convert_keys_to_camel_case(data)
+                
+                # Explicitly convert jamindars if they exist
+                if 'jamindars' in converted_data and isinstance(converted_data['jamindars'], list):
+                    converted_jamindars = []
+                    for jamindar in converted_data['jamindars']:
+                        if isinstance(jamindar, dict):
+                            # Convert each jamindar's keys
+                            converted_jamindars.append(_convert_keys_to_camel_case(jamindar))
+                        else:
+                            converted_jamindars.append(jamindar)
+                    converted_data['jamindars'] = converted_jamindars
+                
+                profiles.append(converted_data)
+        
+        logger.info(f"Retrieved {len(profiles)} profiles for loan {loan_id}")
+        if profiles:
+            return profiles[0]  # Return the first (and should be only) profile
+        return None
+    except Exception as e:
+        logger.error(f"Error getting profile for loan {loan_id} of user {uid}: {e}")
+        return None
+def create_profile_for_user(uid: str, profile_data: Dict[str, Any]) -> Profile:
+    """Create a new profile for a user"""
+    try:
+        # First ensure the user exists
+        if not ensure_user_exists(uid):
+            logger.error(f"Failed to ensure user {uid} exists")
+            raise Exception(f"Failed to create profile for user {uid}")
+            
+        col = _profiles_col(uid)
+        if not col:
+            logger.error(f"Failed to get profiles collection for user {uid}")
+            raise Exception(f"Failed to create profile for user {uid}")
+            
+        # Ensure loan_id is stored as a string
+        if 'loan_id' in profile_data:
+            profile_data['loan_id'] = str(profile_data['loan_id'])
+        
+        # Convert Jamindar fields from camelCase to snake_case before saving
+        if 'jamindars' in profile_data:
+            profile_data['jamindars'] = convert_jamindar_keys(
+                profile_data['jamindars'], 
+                camel_to_snake
+            )
+        
+        doc_ref = col.document()
+        now = datetime.utcnow()
+        profile_data = dict(profile_data)
+        profile_data.setdefault('created_at', now)
+        profile_data.setdefault('updated_at', now)
+        
+        logger.info(f"Creating profile with data: {profile_data}")
+        doc_ref.set(profile_data)
+        logger.info(f"Created profile {doc_ref.id} for user {uid}")
+        
+        saved = doc_ref.get().to_dict()
+        if saved:
+            saved['id'] = doc_ref.id
+            # Convert timestamps
+            for time_field in ['created_at', 'updated_at']:
+                if time_field in saved and hasattr(saved[time_field], 'isoformat'):
+                    saved[time_field] = saved[time_field].isoformat()
+            
+            # Convert snake_case keys to camelCase
+            saved = _convert_keys_to_camel_case(saved)
+            
+            try:
+                return Profile(**saved)
+            except Exception as e:
+                logger.error(f"Error creating Profile from saved data: {e}")
+                raise Exception(f"Failed to create profile for user {uid}: {e}")
+        raise Exception(f"Failed to retrieve saved profile for user {uid}")
+    except Exception as e:
+        logger.error(f"Error creating profile for user {uid}: {e}")
+        raise Exception(f"Failed to create profile for user {uid}: {e}")
+    
+def update_profile_for_user(uid: str, profile_id: str, update_data: Dict[str, Any]) -> Profile:
+    """Update an existing profile for a user"""
+    try:
+        logger.info(f"update_profile_for_user called with profile_id: {profile_id}, update_data: {update_data}")
+        col = _profiles_col(uid)
+        if not col:
+            logger.error(f"Failed to get profiles collection for user {uid}")
+            raise Exception(f"Failed to update profile for user {uid}")
+            
+        # Convert Jamindar fields from camelCase to snake_case before updating
+        if 'jamindars' in update_data and update_data['jamindars']:
+            logger.info("Converting jamindars in update_data")
+            update_data['jamindars'] = convert_jamindar_keys(
+                update_data['jamindars'], 
+                camel_to_snake
+            )
+            
+        doc_ref = col.document(profile_id)
+        update_data['updated_at'] = datetime.utcnow()
+        logger.info(f"Final update_data to be saved: {update_data}")
+        doc_ref.update(update_data)
+        logger.info(f"Updated profile {profile_id} for user {uid}")
+        
+        updated = doc_ref.get().to_dict()
+        if updated:
+            updated['id'] = doc_ref.id
+            # Convert timestamps
+            for time_field in ['created_at', 'updated_at']:
+                if time_field in updated and hasattr(updated[time_field], 'isoformat'):
+                    updated[time_field] = updated[time_field].isoformat()
+            
+            # Convert snake_case keys to camelCase
+            updated = _convert_keys_to_camel_case(updated)
+            
+            try:
+                return Profile(**updated)
+            except Exception as e:
+                logger.error(f"Error creating Profile from updated data: {e}")
+                raise Exception(f"Failed to update profile for user {uid}: {e}")
+        raise Exception(f"Failed to retrieve updated profile for user {uid}")
+    except Exception as e:
+        logger.error(f"Error updating profile {profile_id} for user {uid}: {e}")
+        raise Exception(f"Failed to update profile for user {uid}: {e}")
 
 def get_notices_for_user(uid: str) -> List[Dict[str, Any]]:
     """Get all notices for a user"""

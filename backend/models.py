@@ -43,6 +43,28 @@ class Document(CamelCaseModel):
     file_content: Optional[str] = None  # Base64 encoded
     file_name: Optional[str] = None
 
+class Jamindar(CamelCaseModel):
+    id: str
+    name: str
+    residence_address: str
+    permanent_address: str
+    mobile: str
+
+class Profile(CamelCaseModel):
+    id: str
+    loan_id: str
+    occupation: str
+    address: str
+    profile_photo: Optional[str] = None  # Base64 encoded
+    address_as_per_aadhar: Optional[str] = None
+    nave: Optional[str] = None
+    haste: Optional[str] = None
+    purava: Optional[str] = None
+    permanent_address: Optional[str] = None
+    jamindars: List[Jamindar] = []
+    created_at: datetime
+    updated_at: datetime
+
 class LoanRecord(CamelCaseModel):
     id: str
     borrower_name: str
@@ -60,6 +82,13 @@ class LoanRecord(CamelCaseModel):
     profile_photo: Optional[str] = None  # Base64 encoded
     occupation: Optional[str] = None
     address: Optional[str] = None
+    address_as_per_aadhar: Optional[str] = None
+    nave: Optional[str] = None
+    haste: Optional[str] = None
+    purava: Optional[str] = None
+    permanent_address: Optional[str] = None
+    jamindars: List[Jamindar] = []
+    payment_records: List[dict] = []
 
 class LegalNotice(CamelCaseModel):
     id: str
@@ -103,6 +132,13 @@ class LoanCreate(CamelCaseModel):
     profile_photo: Optional[str] = None
     occupation: Optional[str] = None
     address: Optional[str] = None
+    address_as_per_aadhar: Optional[str] = None
+    nave: Optional[str] = None
+    haste: Optional[str] = None
+    purava: Optional[str] = None
+    permanent_address: Optional[str] = None
+    jamindars: List[dict] = []
+    payment_records: List[dict] = []
 
 class LoanUpdate(CamelCaseModel):
     borrower_name: Optional[str] = None
@@ -118,6 +154,13 @@ class LoanUpdate(CamelCaseModel):
     profile_photo: Optional[str] = None
     occupation: Optional[str] = None
     address: Optional[str] = None
+    address_as_per_aadhar: Optional[str] = None
+    nave: Optional[str] = None
+    haste: Optional[str] = None
+    purava: Optional[str] = None
+    permanent_address: Optional[str] = None
+    jamindars: Optional[List[dict]] = None
+    payment_records: Optional[List[dict]] = None
 
 class NoticeCreate(CamelCaseModel):
     borrower_id: str
@@ -150,3 +193,26 @@ class DocumentCreate(CamelCaseModel):
     file_content: Optional[str] = None
     file_name: Optional[str] = None
     borrower_name: Optional[str] = None  # Add this field
+
+class ProfileCreate(CamelCaseModel):
+    loan_id: str
+    occupation: str
+    address: str
+    profile_photo: Optional[str] = None
+    address_as_per_aadhar: Optional[str] = None
+    nave: Optional[str] = None
+    haste: Optional[str] = None
+    purava: Optional[str] = None
+    permanent_address: Optional[str] = None
+    jamindars: List[dict] = []
+
+class ProfileUpdate(CamelCaseModel):
+    occupation: Optional[str] = None
+    address: Optional[str] = None
+    profile_photo: Optional[str] = None
+    address_as_per_aadhar: Optional[str] = None
+    nave: Optional[str] = None
+    haste: Optional[str] = None
+    purava: Optional[str] = None
+    permanent_address: Optional[str] = None
+    jamindars: List[dict] = []  # Ensure it's always a list

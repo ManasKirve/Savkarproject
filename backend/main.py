@@ -8,6 +8,7 @@ from models import (
     LegalNotice, NoticeCreate, NoticeUpdate,
     Transaction, TransactionCreate,
     Document, DocumentCreate,
+    Profile, ProfileCreate, ProfileUpdate,
     DashboardSummary,
     PaymentMode, LoanStatus, NoticeStatus, TransactionType
 )
@@ -293,6 +294,88 @@ async def get_document_file(doc_id: str):
     except Exception as e:
         logger.error(f"Error getting document file: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Profile endpoints
+@app.get("/loans/{loan_id}/profile", response_model=Profile)
+def get_loan_profile(loan_id: str):
+    try:
+        # Get profile for the savkar user
+        savkar_user_id = firestore_repo.SAVKAR_USER_ID
+        profile_data = firestore_repo.get_profile_for_loan(savkar_user_id, loan_id)
+        
+        if not profile_data:
+            # Return a default profile if none exists
+            return Profile(
+                id="",
+                loan_id=loan_id,
+                occupation="",
+                address="",
+                profile_photo="",
+                addressAsPerAadhar="",
+                nave="",
+                haste="",
+                purava="",
+                permanentAddress="",
+                jamindars=[],
+                createdAt=datetime.utcnow(),
+                updatedAt=datetime.utcnow()
+            )
+        
+        return profile_data
+        
+    except Exception as e:
+        logger.error(f"Error getting profile from Firestore: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get profile: {str(e)}")
+
+@app.post("/loans/{loan_id}/profile", response_model=Profile)
+def create_loan_profile(loan_id: str, profile: ProfileCreate):
+    try:
+        # Create profile for the savkar user
+        savkar_user_id = firestore_repo.SAVKAR_USER_ID
+        # Use dict(by_alias=False) to get snake_case field names for Firestore
+        data = profile.dict(by_alias=False)
+        data['loan_id'] = loan_id
+        
+        saved = firestore_repo.create_profile_for_user(savkar_user_id, data)
+        
+        return saved
+        
+    except Exception as e:
+        logger.error(f"Error creating profile in Firestore: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create profile: {str(e)}")
+
+@app.put("/loans/{loan_id}/profile", response_model=Profile)
+def update_loan_profile(loan_id: str, profile_update: ProfileUpdate):
+    try:
+        logger.info(f"Updating profile for loan {loan_id}")
+        # Get existing profile for the savkar user
+        savkar_user_id = firestore_repo.SAVKAR_USER_ID
+        existing_profile = firestore_repo.get_profile_for_loan(savkar_user_id, loan_id)
+        
+        logger.info(f"Existing profile: {existing_profile}")
+        
+        if not existing_profile:
+            logger.info("No existing profile, creating a new one")
+            # Create a new profile if none exists
+            data = profile_update.dict(by_alias=False, exclude_unset=True)
+            data['loan_id'] = loan_id
+            saved = firestore_repo.create_profile_for_user(savkar_user_id, data)
+            return saved
+        
+        logger.info("Existing profile found, updating it")
+        # Update existing profile
+        profile_id = existing_profile['id']
+        logger.info(f"Profile ID to update: {profile_id}")
+        update_data = profile_update.dict(by_alias=False, exclude_unset=True)
+        logger.info(f"Update data: {update_data}")
+        
+        updated = firestore_repo.update_profile_for_user(savkar_user_id, profile_id, update_data)
+        
+        return updated
+        
+    except Exception as e:
+        logger.error(f"Error updating profile in Firestore: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
 
 @app.get("/notices", response_model=List[LegalNotice])
 def get_notices(request: Request, uid: str = None):

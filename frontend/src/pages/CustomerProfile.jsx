@@ -7,6 +7,7 @@ const CustomerProfile = () => {
   const navigate = useNavigate();
 
   const [selectedLoan, setSelectedLoan] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -18,13 +19,14 @@ const CustomerProfile = () => {
     nave: "",
     haste: "",
     purava: "",
+    permanentAddress: "",
     jamindars: [],
   });
 
   const [documents, setDocuments] = useState([]);
   const [newDocument, setNewDocument] = useState({
     name: "",
-    type: "ID Proof",
+    type: "",
     file: null,
     fileName: "",
   });
@@ -46,16 +48,37 @@ const CustomerProfile = () => {
 
         setSelectedLoan(loan);
 
-        setProfileFormData({
-          occupation: loan.occupation || "",
-          address: loan.address || "",
-          profilePhoto: loan.profilePhoto || "",
-          addressAsPerAadhar: loan.addressAsPerAadhar || "",
-          nave: loan.nave || "",
-          haste: loan.haste || "",
-          purava: loan.purava || "",
-          jamindars: loan.jamindars || [],
-        });
+        // Fetch profile data
+        try {
+          const profileData = await ApiService.getLoanProfile(id);
+          setProfile(profileData);
+          
+          setProfileFormData({
+            occupation: profileData.occupation || "",
+            address: profileData.address || "",
+            profilePhoto: profileData.profilePhoto || "",
+            addressAsPerAadhar: profileData.addressAsPerAadhar || "",
+            nave: profileData.nave || "",
+            haste: profileData.haste || "",
+            purava: profileData.purava || "",
+            permanentAddress: profileData.permanentAddress || "",
+            jamindars: profileData.jamindars || [],
+          });
+        } catch (profileErr) {
+          console.error("Error fetching profile:", profileErr);
+          // Use loan data if profile doesn't exist
+          setProfileFormData({
+            occupation: loan.occupation || "",
+            address: loan.address || "",
+            profilePhoto: loan.profilePhoto || "",
+            addressAsPerAadhar: loan.addressAsPerAadhar || "",
+            nave: loan.nave || "",
+            haste: loan.haste || "",
+            purava: loan.purava || "",
+            permanentAddress: loan.permanentAddress || "",
+            jamindars: loan.jamindars || [],
+          });
+        }
 
         const loanDocuments = await ApiService.getDocumentsByLoanId(id);
         setDocuments(loanDocuments);
@@ -78,6 +101,7 @@ const CustomerProfile = () => {
           nave: dummyLoanData.nave,
           haste: dummyLoanData.haste,
           purava: dummyLoanData.purava,
+          permanentAddress: dummyLoanData.permanentAddress,
           jamindars: dummyLoanData.jamindars,
         });
         setDocuments(dummyLoanData.documents);
@@ -88,6 +112,8 @@ const CustomerProfile = () => {
     };
     fetchLoan();
   }, [id]);
+
+  
 
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
@@ -120,6 +146,7 @@ const CustomerProfile = () => {
       jamindars: [...profileFormData.jamindars, newJamindar],
     });
   };
+  
 
   const handleRemoveJamindar = (id) => {
     setProfileFormData({
@@ -176,7 +203,7 @@ const CustomerProfile = () => {
 
       setNewDocument({
         name: "",
-        type: "ID Proof",
+        type: "",
         file: null,
         fileName: "",
       });
@@ -222,20 +249,37 @@ const CustomerProfile = () => {
   const handleSaveProfile = async () => {
     if (!selectedLoan) return;
 
-    const updatedData = {
-      ...selectedLoan,
-      ...profileFormData,
-      paymentRecords,
-    };
-
-    // Fill dummy values if fields are empty
-    updatedData.addressAsPerAadhar =
-      updatedData.addressAsPerAadhar || "Not Available";
-    updatedData.nave = updatedData.nave || "N/A";
-    updatedData.haste = updatedData.haste || "N/A";
-    updatedData.purava = updatedData.purava || "N/A";
-
     try {
+      // Save profile data separately
+      const profileData = {
+        loanId: selectedLoan.id,
+        occupation: profileFormData.occupation,
+        address: profileFormData.address,
+        profilePhoto: profileFormData.profilePhoto,
+        addressAsPerAadhar: profileFormData.addressAsPerAadhar || "Not Available",
+        nave: profileFormData.nave || "N/A",
+        haste: profileFormData.haste || "N/A",
+        purava: profileFormData.purava || "N/A",
+        permanentAddress: profileFormData.permanentAddress,
+        jamindars: profileFormData.jamindars || [], // Ensure jamindars is always an array
+      };
+
+      console.log("Saving profile with data:", profileData);
+
+      if (profile && profile.id) {
+        // Update existing profile
+        await ApiService.updateLoanProfile(selectedLoan.id, profileData);
+      } else {
+        // Create new profile
+        await ApiService.createLoanProfile(selectedLoan.id, profileData);
+      }
+
+      // Save loan data with payment records
+      const updatedData = {
+        ...selectedLoan,
+        paymentRecords,
+      };
+
       await ApiService.updateLoan(selectedLoan.id, updatedData);
       alert("Profile updated successfully!");
     } catch (err) {
@@ -663,7 +707,6 @@ const CustomerProfile = () => {
                   <th>Action</th>
                 </tr>
               </thead>
-              Documents
               <tbody>
                 {paymentRecords.map((record) => (
                   <tr key={record.id}>
@@ -952,6 +995,7 @@ const dummyLoanData = {
   nave: "Ganesh",
   haste: "Kiran",
   purava: "Pune Camp",
+  permanentAddress: "789 Permanent St, City",
   documents: [],
   paymentRecords: [
     {

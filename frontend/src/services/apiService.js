@@ -123,6 +123,38 @@ class ApiService {
     });
   }
 
+  // Profile endpoints
+  static async getLoanProfile(loanId) {
+    try {
+      const response = await this.request(`/loans/${loanId}/profile`);
+      // The backend returns the profile directly, not wrapped in a data object
+      return response;
+    } catch (error) {
+      console.error("Failed to fetch loan profile:", error);
+      throw error;
+    }
+  }
+  
+  static async createLoanProfile(loanId, profileData) {
+    // Add logging to see what's being sent
+    console.log("Creating loan profile with data:", profileData);
+    
+    return this.request(`/loans/${loanId}/profile`, {
+      method: 'POST',
+      body: profileData,
+    });
+  }
+
+  static async updateLoanProfile(loanId, profileData) {
+    // Add logging to see what's being sent
+    console.log("Updating loan profile with data:", profileData);
+    
+    return this.request(`/loans/${loanId}/profile`, {
+      method: 'PUT',
+      body: profileData,
+    });
+  }
+
   // Per-user loans list - OPTIONAL UID
   static async getMyLoans(uid) {
     if (uid) {
