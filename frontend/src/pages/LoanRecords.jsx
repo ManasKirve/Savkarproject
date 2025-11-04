@@ -28,8 +28,7 @@ const LoanRecords = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 10;
-
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const totalPages = Math.ceil((filteredLoans?.length || 0) / rowsPerPage);
 
   // Slice data for current page
@@ -562,11 +561,31 @@ const LoanRecords = () => {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="card-footer d-flex justify-content-between align-items-center py-2">
-            <small className="text-muted">
-              Showing {(currentPage - 1) * rowsPerPage + 1}–
-              {Math.min(currentPage * rowsPerPage, filteredLoans.length)} of{" "}
-              {filteredLoans.length} entries
-            </small>
+            <div className="d-flex align-items-center gap-3">
+              <small className="text-muted">
+                Showing {(currentPage - 1) * rowsPerPage + 1}–
+                {Math.min(currentPage * rowsPerPage, filteredLoans.length)} of{" "}
+                {filteredLoans.length} entries
+              </small>
+
+              <div className="d-flex align-items-center">
+                <label className="me-2 text-muted">Rows per page:</label>
+                <select
+                  className="form-select form-select-sm"
+                  style={{ width: "80px" }}
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1); // Reset to first page when rows per page changes
+                  }}>
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+            </div>
 
             <nav>
               <ul className="pagination mb-0">
