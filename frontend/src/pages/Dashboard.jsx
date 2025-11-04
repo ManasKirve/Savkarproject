@@ -129,7 +129,7 @@ const Dashboard = () => {
       return {
         'S.No': index + 1,
         'Name': loan.borrowerName || 'N/A',
-        'Amount': emi,
+        'Amount': `₹${emi.toFixed(2)}`, // Added rupee symbol
         'Due Date': dueDate ? dueDate.toLocaleDateString('en-GB') : '-',
         'Paid Date': '', // Leave blank for user to fill
         'Note': '',      // Leave blank for user to fill
@@ -140,139 +140,29 @@ const Dashboard = () => {
     // Create worksheet
     const ws = XLSX.utils.json_to_sheet(excelData);
     
-    // Define styles for different elements
-    const headerStyle = {
-      font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "4472C4" } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: {
-        top: { style: "thin", color: { rgb: "000000" } },
-        bottom: { style: "thin", color: { rgb: "000000" } },
-        left: { style: "thin", color: { rgb: "000000" } },
-        right: { style: "thin", color: { rgb: "000000" } }
-      }
-    };
+
+   
     
-    const emiStyle = {
-      font: { bold: true, sz: 11, color: { rgb: "000000" } },
-      fill: { fgColor: { rgb: "C6E0B4" } }, // Light green
-      numFmt: '"₹"#,##0.00',
-      border: {
-        top: { style: "thin", color: { rgb: "D9D9D9" } },
-        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-        left: { style: "thin", color: { rgb: "D9D9D9" } },
-        right: { style: "thin", color: { rgb: "D9D9D9" } }
-      }
-    };
-    
-    const dueDateStyle = {
-      font: { bold: true, sz: 11, color: { rgb: "000000" } },
-      fill: { fgColor: { rgb: "FFEB9C" } }, // Light yellow
-      border: {
-        top: { style: "thin", color: { rgb: "D9D9D9" } },
-        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-        left: { style: "thin", color: { rgb: "D9D9D9" } },
-        right: { style: "thin", color: { rgb: "D9D9D9" } }
-      }
-    };
-    
-    const paidDateStyle = {
-      font: { sz: 11, color: { rgb: "000000" } },
-      fill: { fgColor: { rgb: "BDD7EE" } }, // Light blue
-      border: {
-        top: { style: "thin", color: { rgb: "D9D9D9" } },
-        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-        left: { style: "thin", color: { rgb: "D9D9D9" } },
-        right: { style: "thin", color: { rgb: "D9D9D9" } }
-      }
-    };
-    
-    const noteStyle = {
-      font: { sz: 11, color: { rgb: "000000" } },
-      fill: { fgColor: { rgb: "D9D9D9" } }, // Light gray
-      border: {
-        top: { style: "thin", color: { rgb: "D9D9D9" } },
-        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-        left: { style: "thin", color: { rgb: "D9D9D9" } },
-        right: { style: "thin", color: { rgb: "D9D9D9" } }
-      }
-    };
-    
-    const fileStyle = {
-      font: { sz: 11, color: { rgb: "000000" } },
-      fill: { fgColor: { rgb: "F8CBAD" } }, // Light orange
-      border: {
-        top: { style: "thin", color: { rgb: "D9D9D9" } },
-        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-        left: { style: "thin", color: { rgb: "D9D9D9" } },
-        right: { style: "thin", color: { rgb: "D9D9D9" } }
-      }
-    };
-    
-    // Get the range of the worksheet
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    
-    // Apply header style to the first row
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
-      if (!ws[headerCell]) continue;
-      ws[headerCell].s = headerStyle;
-    }
-    
-    // Apply styles to data rows
-    for (let R = 1; R <= range.e.r; ++R) {
-      // S.No column (index 0)
-      const snoCell = XLSX.utils.encode_cell({ r: R, c: 0 });
-      if (ws[snoCell]) ws[snoCell].s = { 
-        font: { sz: 11, color: { rgb: "000000" } }, 
-        fill: { fgColor: { rgb: "F2F2F2" } },
-        border: {
-          top: { style: "thin", color: { rgb: "D9D9D9" } },
-          bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-          left: { style: "thin", color: { rgb: "D9D9D9" } },
-          right: { style: "thin", color: { rgb: "D9D9D9" } }
-        }
-      };
-      
-      // Name column (index 1)
-      const nameCell = XLSX.utils.encode_cell({ r: R, c: 1 });
-      if (ws[nameCell]) ws[nameCell].s = { 
-        font: { sz: 11, color: { rgb: "000000" } }, 
-        fill: { fgColor: { rgb: "F2F2F2" } },
-        border: {
-          top: { style: "thin", color: { rgb: "D9D9D9" } },
-          bottom: { style: "thin", color: { rgb: "D9D9D9" } },
-          left: { style: "thin", color: { rgb: "D9D9D9" } },
-          right: { style: "thin", color: { rgb: "D9D9D9" } }
-        }
-      };
-      
-      // EMI column (index 2)
-      const emiCell = XLSX.utils.encode_cell({ r: R, c: 2 });
-      if (ws[emiCell]) ws[emiCell].s = emiStyle;
-      
-      // Due Date column (index 3)
-      const dueDateCell = XLSX.utils.encode_cell({ r: R, c: 3 });
-      if (ws[dueDateCell]) ws[dueDateCell].s = dueDateStyle;
-      
-      // Paid Date column (index 4)
-      const paidDateCell = XLSX.utils.encode_cell({ r: R, c: 4 });
-      if (ws[paidDateCell]) ws[paidDateCell].s = paidDateStyle;
-      
-      // Note column (index 5)
-      const noteCell = XLSX.utils.encode_cell({ r: R, c: 5 });
-      if (ws[noteCell]) ws[noteCell].s = noteStyle;
-      
-      // File column (index 6)
-      const fileCell = XLSX.utils.encode_cell({ r: R, c: 6 });
-      if (ws[fileCell]) ws[fileCell].s = fileStyle;
-    }
-    
-    // Set column widths
+   // Define alignment style for left alignment
+const leftAlignStyle = {
+  alignment: { horizontal: "left", vertical: "center" }
+};
+
+// Get the range of the worksheet
+const range = XLSX.utils.decode_range(ws['!ref']);
+
+// Apply left alignment to all cells
+for (let R = 0; R <= range.e.r; ++R) {
+  for (let C = 0; C <= range.e.c; ++C) {
+    const cell = XLSX.utils.encode_cell({ r: R, c: C });
+    if (!ws[cell]) continue;
+    ws[cell].s = leftAlignStyle;
+  }
+}
     ws['!cols'] = [
       { wch: 6 },  // S.No
       { wch: 25 }, // Name
-      { wch: 15 }, // EMI
+      { wch: 15 }, // Amount
       { wch: 12 }, // Due Date
       { wch: 12 }, // Paid Date
       { wch: 20 }, // Note

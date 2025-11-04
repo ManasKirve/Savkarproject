@@ -267,7 +267,8 @@ const CustomerProfile = () => {
         <h3>Borrower Profile</h3>
         <button
           className="btn btn-secondary"
-          onClick={() => navigate("/loan-records")}>
+          onClick={() => navigate("/loan-records")}
+        >
           ← Back to Loan Records
         </button>
       </div>
@@ -298,7 +299,8 @@ const CustomerProfile = () => {
               <label
                 htmlFor="profile-upload"
                 className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-2 shadow-sm"
-                style={{ cursor: "pointer" }}>
+                style={{ cursor: "pointer" }}
+              >
                 <i className="fas fa-camera text-white"></i>
               </label>
               <input
@@ -313,7 +315,8 @@ const CustomerProfile = () => {
                   className="position-absolute top-0 end-0 bg-success rounded-circle p-2 border-0 shadow-sm"
                   onClick={downloadProfileImage}
                   title="Download"
-                  style={{ cursor: "pointer" }}>
+                  style={{ cursor: "pointer" }}
+                >
                   <i className="fas fa-download text-white"></i>
                 </button>
               )}
@@ -362,7 +365,8 @@ const CustomerProfile = () => {
                     ...profileFormData,
                     address: e.target.value,
                   })
-                }></textarea>
+                }
+              ></textarea>
             </div>
           </div>
 
@@ -407,7 +411,8 @@ const CustomerProfile = () => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 Payment Mode
               </label>
               <div className="flex-grow-1 text-center text-dark fw-medium">
@@ -419,7 +424,8 @@ const CustomerProfile = () => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 Status
               </label>
               <div className="flex-grow-1 text-center">
@@ -430,7 +436,8 @@ const CustomerProfile = () => {
                       : selectedLoan.status === "Closed"
                       ? "bg-secondary"
                       : "bg-warning"
-                  }`}>
+                  }`}
+                >
                   {selectedLoan.status || "N/A"}
                 </span>
               </div>
@@ -440,7 +447,8 @@ const CustomerProfile = () => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 Start Date
               </label>
               <div className="flex-grow-1 text-center text-dark fw-medium">
@@ -454,7 +462,8 @@ const CustomerProfile = () => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 End Date
               </label>
               <div className="flex-grow-1 text-center text-dark fw-medium">
@@ -532,7 +541,8 @@ const CustomerProfile = () => {
                     ...profileFormData,
                     permanentAddress: e.target.value,
                   })
-                }></textarea>
+                }
+              ></textarea>
             </div>
           </div>
         </div>
@@ -544,7 +554,8 @@ const CustomerProfile = () => {
           <h6 className="fw-bold mb-0">Jamindar Details</h6>
           <button
             className="btn btn-sm btn-primary"
-            onClick={handleAddJamindar}>
+            onClick={handleAddJamindar}
+          >
             + Add Jamindar
           </button>
         </div>
@@ -561,7 +572,8 @@ const CustomerProfile = () => {
               </h6>
               <button
                 className="btn btn-sm btn-danger"
-                onClick={() => handleRemoveJamindar(jamindar.id)}>
+                onClick={() => handleRemoveJamindar(jamindar.id)}
+              >
                 − Remove
               </button>
             </div>
@@ -616,7 +628,8 @@ const CustomerProfile = () => {
                       "residenceAddress",
                       e.target.value
                     )
-                  }></textarea>
+                  }
+                ></textarea>
               </div>
 
               <div className="col-md-6">
@@ -634,7 +647,8 @@ const CustomerProfile = () => {
                       "permanentAddress",
                       e.target.value
                     )
-                  }></textarea>
+                  }
+                ></textarea>
               </div>
             </div>
           </div>
@@ -647,7 +661,8 @@ const CustomerProfile = () => {
           <h5 className="mb-0">Payment Records</h5>
           <button
             className="btn btn-sm btn-primary"
-            onClick={handleAddPaymentRow}>
+            onClick={handleAddPaymentRow}
+          >
             + Add Row
           </button>
         </div>
@@ -663,6 +678,7 @@ const CustomerProfile = () => {
                   <th>Action</th>
                 </tr>
               </thead>
+              Documents
               <tbody>
                 {paymentRecords.map((record) => (
                   <tr key={record.id}>
@@ -700,7 +716,8 @@ const CustomerProfile = () => {
                             "status",
                             e.target.value
                           )
-                        }>
+                        }
+                      >
                         <option value="Paid">Paid</option>
                         <option value="Gap">Gap</option>
                       </select>
@@ -718,7 +735,8 @@ const CustomerProfile = () => {
                     <td className="text-center">
                       <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => handleDeletePaymentRow(record.id)}>
+                        onClick={() => handleDeletePaymentRow(record.id)}
+                      >
                         −
                       </button>
                     </td>
@@ -738,10 +756,11 @@ const CustomerProfile = () => {
         <div className="card-body">
           <div className="row mb-4">
             <div className="col-md-4">
+              <label className="form-label fw-semibold">Jamindar</label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="Document name"
+                placeholder="Enter Jamindar name"
                 value={newDocument.name}
                 onChange={(e) =>
                   setNewDocument({ ...newDocument, name: e.target.value })
@@ -749,20 +768,19 @@ const CustomerProfile = () => {
               />
             </div>
             <div className="col-md-3">
-              <select
-                className="form-select"
+              <label className="form-label fw-semibold">Note</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter note"
                 value={newDocument.type}
                 onChange={(e) =>
                   setNewDocument({ ...newDocument, type: e.target.value })
-                }>
-                <option value="ID Proof">ID Proof</option>
-                <option value="Address Proof">Address Proof</option>
-                <option value="Income Certificate">Income Certificate</option>
-                <option value="Agreement">Agreement</option>
-                <option value="Other">Other</option>
-              </select>
+                }
+              />
             </div>
             <div className="col-md-3">
+              <label className="form-label fw-semibold">File</label>
               <input
                 id="document-file-input"
                 type="file"
@@ -770,11 +788,12 @@ const CustomerProfile = () => {
                 onChange={handleDocumentFileChange}
               />
             </div>
-            <div className="col-md-2">
+            <div className="col-md-2 d-flex align-items-end">
               <button
                 className="btn btn-primary w-100"
                 onClick={handleAddDocument}
-                disabled={!newDocument.file}>
+                disabled={!newDocument.file}
+              >
                 Add
               </button>
             </div>
@@ -785,8 +804,8 @@ const CustomerProfile = () => {
               <table className="table table-sm">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Type</th>
+                    <th>Jamindar</th>
+                    <th>Note</th>
                     <th>Preview</th>
                     <th>Uploaded</th>
                     <th>Actions</th>
@@ -826,19 +845,22 @@ const CustomerProfile = () => {
                             link.download = doc.fileName || doc.name;
                             link.click();
                           }}
-                          title="Download">
+                          title="Download"
+                        >
                           <i className="fas fa-download"></i>
                         </button>
                         <button
                           className="btn btn-sm btn-light-info me-1"
                           onClick={() => handleViewDocument(doc)}
-                          title="View">
+                          title="View"
+                        >
                           <i className="fas fa-eye"></i>
                         </button>
                         <button
                           className="btn btn-sm btn-light-danger"
                           onClick={() => handleDeleteDocument(doc.id)}
-                          title="Delete">
+                          title="Delete"
+                        >
                           <i className="fas fa-trash"></i>
                         </button>
                       </td>
@@ -864,7 +886,8 @@ const CustomerProfile = () => {
         <div
           className="modal show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
           <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header">
@@ -872,7 +895,8 @@ const CustomerProfile = () => {
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={closeDocumentModal}></button>
+                  onClick={closeDocumentModal}
+                ></button>
               </div>
               <div className="modal-body text-center">
                 {viewingDocument.fileContent ? (
@@ -907,7 +931,8 @@ const CustomerProfile = () => {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={closeDocumentModal}>
+                  onClick={closeDocumentModal}
+                >
                   Close
                 </button>
                 <button
@@ -919,7 +944,8 @@ const CustomerProfile = () => {
                     link.download =
                       viewingDocument.fileName || viewingDocument.name;
                     link.click();
-                  }}>
+                  }}
+                >
                   Download
                 </button>
               </div>
