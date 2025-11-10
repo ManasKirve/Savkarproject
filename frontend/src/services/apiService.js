@@ -103,6 +103,14 @@ class ApiService {
     });
   }
 
+  static async updatePaidAmount(loanId, paidAmount) {
+    console.log(`ApiService: Updating paid amount for loan ${loanId} to ${paidAmount}`);
+    return this.request(`/loans/${loanId}/paid-amount`, {
+      method: 'PUT',
+      body: { paidAmount },
+    });
+  }
+
   // Documents (Global endpoints - NO UID required)
   static async getDocumentsByLoanId(loanId) {
     const response = await this.request(`/loans/${loanId}/documents`);

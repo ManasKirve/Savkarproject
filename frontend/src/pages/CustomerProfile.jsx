@@ -38,6 +38,30 @@ const CustomerProfile = () => {
   const [viewingDocument, setViewingDocument] = useState(null);
 
   useEffect(() => {
+    if (!selectedLoan || !paymentRecords) return;
+
+    // Calculate total paid amount
+    const totalPaid = paymentRecords
+      .filter((r) => r.status === "Paid" && r.amount)
+      .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+    // Update local state
+    setSelectedLoan((prev) => ({
+      ...prev,
+      paidAmount: totalPaid,
+    }));
+
+    // Call API to update paid amount
+    ApiService.updatePaidAmount(selectedLoan.id, totalPaid)
+      .then(() => {
+        console.log("Paid amount updated successfully");
+      })
+      .catch((error) => {
+        console.error("Error updating paid amount:", error);
+      });
+  }, [paymentRecords, selectedLoan?.id]);
+
+  useEffect(() => {
     const fetchLoan = async () => {
       try {
         const savkarUserId = "savkar_user_001";
@@ -52,7 +76,7 @@ const CustomerProfile = () => {
         try {
           const profileData = await ApiService.getLoanProfile(id);
           setProfile(profileData);
-          
+
           setProfileFormData({
             occupation: profileData.occupation || "",
             address: profileData.address || "",
@@ -113,8 +137,6 @@ const CustomerProfile = () => {
     fetchLoan();
   }, [id]);
 
-  
-
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -146,7 +168,6 @@ const CustomerProfile = () => {
       jamindars: [...profileFormData.jamindars, newJamindar],
     });
   };
-  
 
   const handleRemoveJamindar = (id) => {
     setProfileFormData({
@@ -256,7 +277,8 @@ const CustomerProfile = () => {
         occupation: profileFormData.occupation,
         address: profileFormData.address,
         profilePhoto: profileFormData.profilePhoto,
-        addressAsPerAadhar: profileFormData.addressAsPerAadhar || "Not Available",
+        addressAsPerAadhar:
+          profileFormData.addressAsPerAadhar || "Not Available",
         nave: profileFormData.nave || "N/A",
         haste: profileFormData.haste || "N/A",
         purava: profileFormData.purava || "N/A",
