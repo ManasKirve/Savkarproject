@@ -229,7 +229,6 @@ def create_loan_for_user(uid: str, loan_data: Dict[str, Any]) -> LoanRecord:
         raise Exception(f"Failed to create loan for user {uid}: {e}")
 
 def update_loan_for_user(uid: str, loan_id: str, update_data: Dict[str, Any]) -> LoanRecord:
-    """Update an existing loan for a user"""
     try:
         col = _loans_col(uid)
         if not col:
@@ -238,6 +237,11 @@ def update_loan_for_user(uid: str, loan_id: str, update_data: Dict[str, Any]) ->
             
         doc_ref = col.document(loan_id)
         update_data['updated_at'] = datetime.utcnow()
+        
+        # Ensure payment_records is properly handled
+        if 'payment_records' in update_data:
+            logger.info(f"Updating payment records for loan {loan_id}: {update_data['payment_records']}")
+        
         doc_ref.update(update_data)
         logger.info(f"Updated loan {loan_id} for user {uid}")
         
@@ -261,7 +265,7 @@ def update_loan_for_user(uid: str, loan_id: str, update_data: Dict[str, Any]) ->
     except Exception as e:
         logger.error(f"Error updating loan {loan_id} for user {uid}: {e}")
         raise Exception(f"Failed to update loan for user {uid}: {e}")
-
+    
 def delete_loan_for_user(uid: str, loan_id: str):
     """Delete a loan for a user"""
     try:

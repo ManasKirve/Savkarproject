@@ -37,31 +37,25 @@ const CustomerProfile = () => {
 
   const [viewingDocument, setViewingDocument] = useState(null);
 
-  useEffect(() => {
-    if (!selectedLoan || !paymentRecords) return;
+useEffect(() => {
+  if (!selectedLoan || !paymentRecords) return;
 
-    // Calculate total paid amount
-    const totalPaid = paymentRecords
-      .filter((r) => r.status === "Paid" && r.amount)
-      .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+  // Calculate total paid amount
+  const totalPaid = paymentRecords
+    .filter((r) => r.status === "Paid" && r.amount)
+    .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
 
-    // Update local state
-    setSelectedLoan((prev) => ({
-      ...prev,
-      paidAmount: totalPaid,
-    }));
+  // Update local state only
+  setSelectedLoan((prev) => ({
+    ...prev,
+    paidAmount: totalPaid,
+  }));
 
-    // Call API to update paid amount
-    ApiService.updatePaidAmount(selectedLoan.id, totalPaid)
-      .then(() => {
-        console.log("Paid amount updated successfully");
-      })
-      .catch((error) => {
-        console.error("Error updating paid amount:", error);
-      });
-  }, [paymentRecords, selectedLoan?.id]);
+  // Remove the API call to updatePaidAmount since it's causing issues
+  // The paid amount will be updated when the entire profile is saved
+}, [paymentRecords, selectedLoan?.id]); 
 
-  useEffect(() => {
+useEffect(() => {
     const fetchLoan = async () => {
       try {
         const savkarUserId = "savkar_user_001";
@@ -268,47 +262,54 @@ const CustomerProfile = () => {
   };
 
   const handleSaveProfile = async () => {
-    if (!selectedLoan) return;
+  if (!selectedLoan) return;
 
-    try {
-      // Save profile data separately
-      const profileData = {
-        loanId: selectedLoan.id,
-        occupation: profileFormData.occupation,
-        address: profileFormData.address,
-        profilePhoto: profileFormData.profilePhoto,
-        addressAsPerAadhar:
-          profileFormData.addressAsPerAadhar || "Not Available",
-        nave: profileFormData.nave || "N/A",
-        haste: profileFormData.haste || "N/A",
-        purava: profileFormData.purava || "N/A",
-        permanentAddress: profileFormData.permanentAddress,
-        jamindars: profileFormData.jamindars || [], // Ensure jamindars is always an array
-      };
+  try {
+    // Save profile data separately
+    const profileData = {
+      loanId: selectedLoan.id,
+      occupation: profileFormData.occupation,
+      address: profileFormData.address,
+      profilePhoto: profileFormData.profilePhoto,
+      addressAsPerAadhar:
+        profileFormData.addressAsPerAadhar || "Not Available",
+      nave: profileFormData.nave || "N/A",
+      haste: profileFormData.haste || "N/A",
+      purava: profileFormData.purava || "N/A",
+      permanentAddress: profileFormData.permanentAddress,
+      jamindars: profileFormData.jamindars || [], // Ensure jamindars is always an array
+      paymentRecords: paymentRecords, // Add this line
+    };
 
-      console.log("Saving profile with data:", profileData);
+    console.log("Saving profile with data:", profileData);
 
-      if (profile && profile.id) {
-        // Update existing profile
-        await ApiService.updateLoanProfile(selectedLoan.id, profileData);
-      } else {
-        // Create new profile
-        await ApiService.createLoanProfile(selectedLoan.id, profileData);
-      }
-
-      // Save loan data with payment records
-      const updatedData = {
-        ...selectedLoan,
-        paymentRecords,
-      };
-
-      await ApiService.updateLoan(selectedLoan.id, updatedData);
-      alert("Profile updated successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update profile (API not responding).");
+    if (profile && profile.id) {
+      // Update existing profile
+      await ApiService.updateLoanProfile(selectedLoan.id, profileData);
+    } else {
+      // Create new profile
+      await ApiService.createLoanProfile(selectedLoan.id, profileData);
     }
-  };
+
+    // Calculate total paid amount from payment records
+    const totalPaid = paymentRecords
+      .filter((r) => r.status === "Paid" && r.amount)
+      .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+    // Save loan data with payment records
+    const updatedData = {
+      ...selectedLoan,
+      paidAmount: totalPaid, // Update paid amount based on payment records
+      paymentRecords: paymentRecords, // Include payment records in the update
+    };
+
+    await ApiService.updateLoan(selectedLoan.id, updatedData);
+    alert("Profile updated successfully!");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to update profile (API not responding).");
+  }
+};
 
   const isImageFile = (filename) => {
     const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp"];

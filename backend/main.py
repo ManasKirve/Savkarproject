@@ -500,7 +500,7 @@ def create_my_document(document: DocumentCreate, request: Request, uid: str = No
 def health_check():
     return {"status": "healthy", "firebase": "initialized" if init_firebase else "not initialized"}
 
-# Add debug endpoint for Firestore
+
 @app.get("/debug/firestore")
 def debug_firestore():
     try:
@@ -534,7 +534,84 @@ def debug_firestore():
     except Exception as e:
         return {"error": str(e)}
 
-# Add test endpoint
+
+def update_paid_amount_for_user(uid: str, loan_id: str, paid_amount: float) -> LoanRecord:
+    """
+    Update only the paid amount for a user's loan and adjust the status.
+    Automatically sets 'closed_at' when loan is fully paid.
+    """
+    try:
+        col = _loans_col(uid)
+        if not col:
+            logger.error(f"Failed to get loans collection for user {uid}")
+            raise Exception(f"Failed to update paid amount for user {uid}")
+
+        doc_ref = col.document(loan_id)
+        loan_doc = doc_ref.get()
+        if not loan_doc.exists:
+            raise Exception(f"Loan {loan_id} not found for user {uid}")
+
+        loan_data = loan_doc.to_dict() or {}
+
+        # Handle both totalLoan and total_loan naming
+        total_loan = (
+            loan_data.get("total_loan") or
+            loan_data.get("totalLoan") or
+            0
+        )
+
+        # Determine new status
+        if paid_amount >= total_loan:
+            new_status = "Closed"
+        elif paid_amount > 0:
+            new_status = "Active"
+        else:
+            new_status = "Pending"
+
+        # Prepare update payload
+        update_data = {
+            "paid_amount": paid_amount,
+            "status": new_status,
+            "updated_at": datetime.utcnow(),
+        }
+
+        # Mark closed_at if loan is now fully paid
+        if new_status == "Closed":
+            update_data["closed_at"] = datetime.utcnow()
+
+        # Update Firestore
+        doc_ref.update(update_data)
+        logger.info(
+            f"✅ Updated paid amount for loan {loan_id} (User: {uid}) → {paid_amount}, status: {new_status}"
+        )
+
+        # Fetch updated data
+        updated = doc_ref.get().to_dict()
+        if not updated:
+            raise Exception(f"Failed to retrieve updated loan for user {uid}")
+
+        updated["id"] = loan_id
+
+        # Convert Firestore Timestamps to ISO
+        for time_field in ["created_at", "updated_at", "closed_at"]:
+            if time_field in updated and hasattr(updated[time_field], "isoformat"):
+                updated[time_field] = updated[time_field].isoformat()
+
+        # Convert keys from snake_case → camelCase
+        updated = _convert_keys_to_camel_case(updated)
+
+        # Return LoanRecord model
+        try:
+            return LoanRecord(**updated)
+        except Exception as e:
+            logger.error(f"Error creating LoanRecord for user {uid}: {e}")
+            raise Exception(f"Failed to return updated record: {e}")
+
+    except Exception as e:
+        logger.error(f"❌ Error updating paid amount for loan {loan_id} (User: {uid}): {e}")
+        raise Exception(f"Failed to update paid amount for user {uid}: {e}")
+
+
 @app.get("/test-connection")
 def test_connection():
     """Test Firebase connection and data creation"""

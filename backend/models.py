@@ -62,6 +62,7 @@ class Profile(CamelCaseModel):
     purava: Optional[str] = None
     permanent_address: Optional[str] = None
     jamindars: List[Jamindar] = []
+    payment_records: List[dict] = []  # Added payment_records field
     created_at: datetime
     updated_at: datetime
 
@@ -205,6 +206,7 @@ class ProfileCreate(CamelCaseModel):
     purava: Optional[str] = None
     permanent_address: Optional[str] = None
     jamindars: List[dict] = []
+    payment_records: List[dict] = []  # Added payment_records field
 
 class ProfileUpdate(CamelCaseModel):
     occupation: Optional[str] = None
@@ -216,3 +218,4 @@ class ProfileUpdate(CamelCaseModel):
     purava: Optional[str] = None
     permanent_address: Optional[str] = None
     jamindars: List[dict] = []  # Ensure it's always a list
+    payment_records: List[dict] = []  # Added payment_records field
