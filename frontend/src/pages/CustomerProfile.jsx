@@ -110,20 +110,6 @@ useEffect(() => {
         console.error("Error fetching loan:", err);
         setError("Failed to load borrower profile, using dummy data...");
         alert("API failed — displaying dummy data for testing.");
-        setSelectedLoan(dummyLoanData);
-        setProfileFormData({
-          occupation: dummyLoanData.occupation,
-          address: dummyLoanData.address,
-          profilePhoto: dummyLoanData.profilePhoto,
-          addressAsPerAadhar: dummyLoanData.addressAsPerAadhar,
-          nave: dummyLoanData.nave,
-          haste: dummyLoanData.haste,
-          purava: dummyLoanData.purava,
-          permanentAddress: dummyLoanData.permanentAddress,
-          jamindars: dummyLoanData.jamindars,
-        });
-        setDocuments(dummyLoanData.documents);
-        setPaymentRecords(dummyLoanData.paymentRecords);
       } finally {
         setLoading(false);
       }
@@ -852,7 +838,7 @@ useEffect(() => {
               <table className="table table-sm">
                 <thead>
                   <tr>
-                    <th>Jamindar</th>
+                    <th>Name</th>
                     <th>Note</th>
                     <th>Preview</th>
                     <th>Uploaded</th>
@@ -996,48 +982,6 @@ useEffect(() => {
       )}
     </div>
   );
-};
-
-// Dummy data for testing
-const dummyLoanData = {
-  id: "dummy-loan-001",
-  borrowerName: "John Doe",
-  phoneNumber: "9876543210",
-  totalLoan: 100000,
-  paidAmount: 25000,
-  emi: 5000,
-  interestRate: 10,
-  paymentMode: "Bank Transfer",
-  status: "Active",
-  startDate: "2023-01-15",
-  endDate: "2024-12-15",
-  occupation: "Software Engineer",
-  address: "123 Main St, City",
-  profilePhoto: "",
-  addressAsPerAadhar: "456 Aadhar Nagar, Pune",
-  nave: "Ganesh",
-  haste: "Kiran",
-  purava: "Pune Camp",
-  permanentAddress: "789 Permanent St, City",
-  documents: [],
-  paymentRecords: [
-    {
-      id: 101,
-      date: "2024-05-01",
-      amount: 12500,
-      status: "Paid",
-      note: "First EMI cleared",
-    },
-  ],
-  jamindars: [
-    {
-      id: 1,
-      name: "",
-      residenceAddress: "",
-      permanentAddress: "",
-      mobile: "",
-    },
-  ],
 };
 
 export default CustomerProfile;
