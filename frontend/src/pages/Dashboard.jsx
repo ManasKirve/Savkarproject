@@ -59,15 +59,34 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Helper: calculate due date
   const getDueDate = (loan) => {
     if (loan.status === "Closed") return null;
+    if (!loan.startDate) return null;
+
     const start = new Date(loan.startDate);
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const dueDate = new Date(start);
-    dueDate.setMonth(currentMonth);
-    dueDate.setFullYear(currentYear);
+    const current = new Date();
+    const currentMonth = current.getMonth();
+    const currentYear = current.getFullYear();
+
+    // Check if the start date was the last day of its month
+    const lastDayOfStartMonth = new Date(
+      start.getFullYear(),
+      start.getMonth() + 1,
+      0
+    ).getDate();
+
+    const isLastDayOfMonth = start.getDate() === lastDayOfStartMonth;
+
+    // Generate due date for the current month
+    let dueDate;
+    if (isLastDayOfMonth) {
+      // If start date was last day → due date = last day of current month
+      dueDate = new Date(currentYear, currentMonth + 1, 0);
+    } else {
+      // Otherwise, keep same day number, but in current month/year
+      dueDate = new Date(currentYear, currentMonth, start.getDate());
+    }
+
     return dueDate;
   };
 
@@ -95,9 +114,14 @@ const Dashboard = () => {
     });
 
     const sorted = [...filtered].sort((a, b) => {
-      const dateA = new Date(a.startDate);
-      const dateB = new Date(b.startDate);
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+      const dueA = getDueDate(a);
+      const dueB = getDueDate(b);
+
+      if (!dueA && !dueB) return 0;
+      if (!dueA) return 1; // place loans without due dates at bottom
+      if (!dueB) return -1;
+
+      return sortOrder === "asc" ? dueA - dueB : dueB - dueA;
     });
 
     setLoans(sorted);
@@ -337,14 +361,14 @@ const Dashboard = () => {
                   <th>Amount</th>
                   <th>Interest Rate</th>
                   <th>EMI</th>
-                  <th onClick={sortByDate} style={{ cursor: "pointer" }}>
-                    Start Date{" "}
+                  <th>Start Date</th>
+                  <th onClick={sortByDate} className="cursor-pointer">
+                    Due Date
                     <i
                       className={`fas fa-sort-${
                         sortOrder === "asc" ? "up" : "down"
                       } ms-1`}></i>
                   </th>
-                  <th>Due Date</th>
                   <th>End Date</th>
                   <th>Status</th>
                   <th>Progress</th>
@@ -443,7 +467,7 @@ const Dashboard = () => {
               <div className="d-flex align-items-center gap-3">
                 <small className="text-muted">
                   Showing {indexOfFirstRecord + 1}–
-                  {Math.min(indexOfLastRecord, loans.length)} of {loans.length}{" "}
+                  {Math.min(indexOfLastRecord, loans.length)} of {loans.length}
                   entries
                 </small>
 

@@ -564,7 +564,7 @@ const LoanRecords = () => {
             <div className="d-flex align-items-center gap-3">
               <small className="text-muted">
                 Showing {(currentPage - 1) * rowsPerPage + 1}–
-                {Math.min(currentPage * rowsPerPage, filteredLoans.length)} of{" "}
+                {Math.min(currentPage * rowsPerPage, filteredLoans.length)} of
                 {filteredLoans.length} entries
               </small>
 
