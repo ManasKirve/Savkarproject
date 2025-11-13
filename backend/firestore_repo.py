@@ -163,6 +163,10 @@ def get_loans_for_user(uid: str) -> List[Dict[str, Any]]:
                 if 'updated_at' in data and hasattr(data.get('updated_at'), 'isoformat'):
                     data['updated_at'] = data['updated_at'].isoformat()
                 
+                # Ensure loan_type is included with default value if missing
+                if 'loan_type' not in data:
+                    data['loan_type'] = 'Cash Loan'
+                
                 # Convert snake_case keys to camelCase for frontend compatibility
                 converted_data = {}
                 for key, value in data.items():
@@ -202,6 +206,10 @@ def create_loan_for_user(uid: str, loan_data: Dict[str, Any]) -> LoanRecord:
         loan_data.setdefault('created_at', now)
         loan_data.setdefault('updated_at', now)
         
+        # Ensure loan_type is included with default value if missing
+        if 'loan_type' not in loan_data:
+            loan_data['loan_type'] = 'Cash Loan'
+        
         logger.info(f"Setting loan data to Firestore: {loan_data}")
         doc_ref.set(loan_data)
         logger.info(f"Created loan {doc_ref.id} for user {uid}")
@@ -236,6 +244,12 @@ def update_loan_for_user(uid: str, loan_id: str, update_data: Dict[str, Any]) ->
             raise Exception(f"Failed to update loan for user {uid}")
             
         doc_ref = col.document(loan_id)
+        
+        # Get existing loan to preserve loan_type if not being updated
+        existing_loan = doc_ref.get().to_dict()
+        if existing_loan and 'loan_type' not in update_data:
+            update_data['loan_type'] = existing_loan.get('loan_type', 'Cash Loan')
+        
         update_data['updated_at'] = datetime.utcnow()
         
         # Ensure payment_records is properly handled

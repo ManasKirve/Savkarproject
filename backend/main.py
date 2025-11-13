@@ -10,7 +10,8 @@ from models import (
     Document, DocumentCreate,
     Profile, ProfileCreate, ProfileUpdate,
     DashboardSummary,
-    PaymentMode, LoanStatus, NoticeStatus, TransactionType
+    PaymentMode, LoanStatus, NoticeStatus, TransactionType,
+    LoanType  # Added LoanType import
 )
 from deps import verify_firebase_token
 import firestore_repo
@@ -541,7 +542,7 @@ def update_paid_amount_for_user(uid: str, loan_id: str, paid_amount: float) -> L
     Automatically sets 'closed_at' when loan is fully paid.
     """
     try:
-        col = _loans_col(uid)
+        col = firestore_repo._loans_col(uid)
         if not col:
             logger.error(f"Failed to get loans collection for user {uid}")
             raise Exception(f"Failed to update paid amount for user {uid}")
@@ -560,6 +561,9 @@ def update_paid_amount_for_user(uid: str, loan_id: str, paid_amount: float) -> L
             0
         )
 
+        # Preserve existing loan type
+        loan_type = loan_data.get("loan_type") or loan_data.get("loanType", "Cash Loan")
+
         # Determine new status
         if paid_amount >= total_loan:
             new_status = "Closed"
@@ -573,6 +577,7 @@ def update_paid_amount_for_user(uid: str, loan_id: str, paid_amount: float) -> L
             "paid_amount": paid_amount,
             "status": new_status,
             "updated_at": datetime.utcnow(),
+            "loan_type": loan_type  # Preserve loan type
         }
 
         # Mark closed_at if loan is now fully paid
@@ -598,7 +603,7 @@ def update_paid_amount_for_user(uid: str, loan_id: str, paid_amount: float) -> L
                 updated[time_field] = updated[time_field].isoformat()
 
         # Convert keys from snake_case → camelCase
-        updated = _convert_keys_to_camel_case(updated)
+        updated = firestore_repo._convert_keys_to_camel_case(updated)
 
         # Return LoanRecord model
         try:
@@ -642,6 +647,7 @@ def test_connection():
             'total_loan': 12000,
             'paid_amount': 0,
             'status': 'Active',
+            'loan_type': 'Cash Loan',  # Added loan_type field
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow()
         }

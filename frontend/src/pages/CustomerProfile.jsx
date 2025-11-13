@@ -443,6 +443,10 @@ useEffect(() => {
                 <span>Interest Rate:</span>
                 <strong>{selectedLoan.interestRate || 0}%</strong>
               </li>
+              <li className="list-group-item d-flex justify-content-between">
+                <span>Loan Type:</span>
+                <strong>{selectedLoan.loanType || "N/A"}</strong>
+              </li>
             </ul>
           </div>
         </div>
