@@ -267,8 +267,6 @@ useEffect(() => {
       paymentRecords: paymentRecords, // Add this line
     };
 
-    console.log("Saving profile with data:", profileData);
-
     if (profile && profile.id) {
       // Update existing profile
       await ApiService.updateLoanProfile(selectedLoan.id, profileData);

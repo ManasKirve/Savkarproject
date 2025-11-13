@@ -54,12 +54,10 @@ const LoanRecords = () => {
     setLoading(true);
     setError(null);
     try {
-      console.log("LoanRecords: Starting to load loans...");
 
       // First, check if the backend is reachable
       try {
         const healthCheck = await ApiService.healthCheck();
-        console.log("Health check result:", healthCheck);
       } catch (healthError) {
         console.error("Health check failed:", healthError);
         setError(
@@ -71,7 +69,6 @@ const LoanRecords = () => {
       // Use the savkar user ID
       const savkarUserId = "savkar_user_001";
       const res = await ApiService.getMyLoans(savkarUserId);
-      console.log("LoanRecords: Loans data received:", res);
 
       let loansData = Array.isArray(res) ? res : res?.data ?? [];
       setLoans(loansData);
@@ -158,12 +155,6 @@ const LoanRecords = () => {
   };
 
   const filterLoans = () => {
-    console.log(
-      "LoanRecords: Filtering loans with searchTerm:",
-      searchTerm,
-      "and statusFilter:",
-      statusFilter
-    );
     let filtered = loans;
 
     if (searchTerm) {
@@ -182,7 +173,6 @@ const LoanRecords = () => {
       filtered = filtered.filter((loan) => loan.status === statusFilter);
     }
 
-    console.log("LoanRecords: Filtered loans count:", filtered.length);
     setFilteredLoans(filtered);
   };
 
@@ -214,9 +204,7 @@ const LoanRecords = () => {
     }
 
     try {
-      console.log("LoanRecords: Submitting loan data:", loanData);
 
-      // Show loading state
       setLoading(true);
 
       if (editingLoan) {
@@ -225,7 +213,6 @@ const LoanRecords = () => {
       } else {
         // Use global create endpoint
         const result = await ApiService.createLoan(loanData);
-        console.log("LoanRecords: Loan created successfully:", result);
       }
 
       loadLoans();
@@ -257,7 +244,6 @@ const LoanRecords = () => {
   };
 
   const handleEdit = (loan) => {
-    console.log("LoanRecords: Editing loan:", loan);
     setEditingLoan(loan);
     setFormData({
       borrowerName: loan.borrowerName || "",
@@ -279,7 +265,6 @@ const LoanRecords = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this loan record?")) {
       try {
-        console.log("LoanRecords: Deleting loan with id:", id);
         // Use global delete endpoint
         await ApiService.deleteLoan(id);
         loadLoans();
@@ -292,7 +277,6 @@ const LoanRecords = () => {
 
   // Profile functionality - Navigate to profile page
   const handleProfileClick = (loan) => {
-    console.log("LoanRecords: Navigating to profile for loan:", loan);
     navigate(`/profile/${loan.id}`);
   };
 

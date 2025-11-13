@@ -12,7 +12,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   // 🔐 Permanent password (never changes)
-  const PERMANENT_PASSWORD = '2BG2DErB!';
+  const PERMANENT_PASSWORD = 'pass@123';
 
   const handleChange = (e) => {
     setCredentials({

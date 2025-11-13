@@ -6,7 +6,6 @@ class ApiService {
   // Helper method for making API requests
   static async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log(`ApiService: Making request to ${url}`);
     
     const defaultOptions = {
       headers: {
@@ -26,10 +25,7 @@ class ApiService {
     }
 
     try {
-      console.log(`ApiService: Sending request to ${url}`);
       const response = await fetch(url, config);
-      
-      console.log(`ApiService: Response status: ${response.status}`);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -40,7 +36,6 @@ class ApiService {
       if (response.status === 204) return null;
       
       const data = await response.json();
-      console.log(`ApiService: Response data:`, data);
       
       // Your backend returns snake_case, convert to camelCase for frontend
       const camelize = (obj) => {
@@ -57,7 +52,6 @@ class ApiService {
       };
 
       const camelizedData = camelize(data);
-      console.log(`ApiService: Camelized data:`, camelizedData);
       
       return camelizedData;
     } catch (error) {
@@ -104,7 +98,6 @@ class ApiService {
   }
 
   static async updatePaidAmount(loanId, paidAmount) {
-    console.log(`ApiService: Updating paid amount for loan ${loanId} to ${paidAmount}`);
     return this.request(`/loans/${loanId}/paid-amount`, {
       method: 'PUT',
       body: { paidAmount },
@@ -144,8 +137,6 @@ class ApiService {
   }
   
   static async createLoanProfile(loanId, profileData) {
-    // Add logging to see what's being sent
-    console.log("Creating loan profile with data:", profileData);
     
     return this.request(`/loans/${loanId}/profile`, {
       method: 'POST',
@@ -154,8 +145,6 @@ class ApiService {
   }
 
   static async updateLoanProfile(loanId, profileData) {
-    // Add logging to see what's being sent
-    console.log("Updating loan profile with data:", profileData);
     
     return this.request(`/loans/${loanId}/profile`, {
       method: 'PUT',
