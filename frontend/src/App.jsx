@@ -11,6 +11,7 @@ import InterestCalculator from './pages/InterestCalculator';
 import Login from './pages/Login';
 import './App.css';
 import CustomerProfile from './pages/CustomerProfile';
+import ForgotPassword from './pages/ForgetPassword';
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => {
           
           {/* Login page */}
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           
           {/* Protected routes with layout */}
           <Route element={

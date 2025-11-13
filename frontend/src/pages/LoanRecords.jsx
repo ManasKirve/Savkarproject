@@ -359,31 +359,6 @@ const LoanRecords = () => {
           </h2>
           <p className="text-muted mb-0">Manage and track all loan records</p>
         </div>
-        {/* small sync button (sync localStorage loans to backend) */}
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <button
-            className="btn btn-outline-danger btn-sm"
-            onClick={async () => {
-              try {
-                const response = await fetch(
-                  "http://localhost:8000/test-connection"
-                );
-                const data = await response.json();
-                alert(`Connection Test: ${JSON.stringify(data, null, 2)}`);
-              } catch (e) {
-                alert(`Connection test failed: ${e.message}`);
-              }
-            }}>
-            Test Connection
-          </button>
-          <button
-            className="btn btn-outline-primary btn-sm"
-            onClick={async () => {
-              await syncLocalLoans();
-            }}>
-            Sync Local Loans
-          </button>
-        </div>
         <div className="card p-2">
           <div className="d-flex align-items-center justify-content-around">
             <h6 className="text-muted">TOTAL LOANS</h6>
