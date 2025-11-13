@@ -24,6 +24,7 @@ const LoanRecords = () => {
     totalLoan: "",
     paidAmount: "0",
     status: "Active",
+    loanType: "Cash Loan", 
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -199,6 +200,7 @@ const LoanRecords = () => {
       endDate: formData.endDate,
       paymentMode: formData.paymentMode,
       status: formData.status,
+      loanType: formData.loanType, // Added loanType
     };
 
     // Calculate progress percentage
@@ -248,6 +250,7 @@ const LoanRecords = () => {
       paymentMode: "Bank Transfer",
       totalLoan: "",
       status: "Active",
+      loanType: "Cash Loan", // Added loanType
     });
     setEditingLoan(null);
     setShowAddModal(false);
@@ -268,6 +271,7 @@ const LoanRecords = () => {
       totalLoan: loan.totalLoan?.toString() || "",
       paidAmount: loan.paidAmount?.toString() || "0",
       status: loan.status || "Active",
+      loanType: loan.loanType || "Cash Loan", // Added loanType
     });
     setShowAddModal(true);
   };
@@ -435,6 +439,7 @@ const LoanRecords = () => {
                 <tr>
                   <th className="wth-250">CUSTOMER NAME</th>
                   <th>PHONE NUMBER</th>
+                  <th>LOAN TYPE</th> {/* Added Loan Type column */}
                   <th>TOTAL LOAN</th>
                   <th>PAID AMOUNT</th>
                   <th>EMI</th>
@@ -453,6 +458,7 @@ const LoanRecords = () => {
                     <tr key={loan.id}>
                       <td className="fw-medium wth-250">{loan.borrowerName}</td>
                       <td>{loan.phoneNumber}</td>
+                      <td>{loan.loanType}</td> {/* Added Loan Type display */}
                       <td>₹{loan.totalLoan?.toLocaleString()}</td>
                       <td>₹{loan.paidAmount?.toLocaleString()}</td>
                       <td>₹{loan.emi?.toLocaleString()}</td>
@@ -548,7 +554,7 @@ const LoanRecords = () => {
                   ))
                 ) : (
                   <tr key="no-loans">
-                    <td colSpan="12" className="text-center py-4">
+                    <td colSpan="13" className="text-center py-4">
                       <p className="text-muted mb-0">No loan records found</p>
                     </td>
                   </tr>
@@ -694,6 +700,23 @@ const LoanRecords = () => {
                     <div className="col-12">
                       <h6 className="mb-3 text-muted">Loan Details</h6>
                       <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="form-label">Loan Type *</label>
+                          <select
+                            className="form-select"
+                            value={formData.loanType}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                loanType: e.target.value,
+                              })
+                            }
+                            required>
+                            <option value="Cash Loan">Cash Loan</option>
+                            <option value="Gold Loan">Gold Loan</option>
+                            <option value="Home Loan">Home Loan</option>
+                          </select>
+                        </div>
                         <div className="col-md-6">
                           <label className="form-label">
                             Total Loan Amount *

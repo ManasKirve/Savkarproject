@@ -164,6 +164,7 @@ const Dashboard = () => {
       return {
         "S.No": index + 1,
         Name: loan.borrowerName || "N/A",
+        "Loan Type": loan.loanType || "N/A", // Added loan type
         Amount: `₹${emi.toFixed(2)}`,
         "Due Date": dueDate ? dueDate.toLocaleDateString("en-GB") : "-",
         "Paid Date": "",
@@ -177,6 +178,7 @@ const Dashboard = () => {
     ws["!cols"] = [
       { wch: 6 },
       { wch: 25 },
+      { wch: 15 }, // Loan type column
       { wch: 15 },
       { wch: 12 },
       { wch: 12 },
@@ -358,6 +360,7 @@ const Dashboard = () => {
               <thead>
                 <tr>
                   <th>Customer Name</th>
+                  <th>Loan Type</th> {/* Added loan type column */}
                   <th>Amount</th>
                   <th>Interest Rate</th>
                   <th>EMI</th>
@@ -398,6 +401,7 @@ const Dashboard = () => {
                             </small>
                           </div>
                         </td>
+                        <td>{loan.loanType || "N/A"}</td> {/* Added loan type display */}
                         <td>₹{(loan.totalLoan || 0).toLocaleString()}</td>
                         <td>{loan.interestRate || 0}%</td>
                         <td>₹{emi.toLocaleString()}</td>
@@ -452,7 +456,7 @@ const Dashboard = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="9" className="text-center text-muted py-3">
+                    <td colSpan="10" className="text-center text-muted py-3">
                       No loans found for selected dates.
                     </td>
                   </tr>

@@ -25,6 +25,12 @@ class LoanStatus(str, Enum):
     PENDING = "Pending"
     CLOSED = "Closed"
 
+# Add LoanType enum
+class LoanType(str, Enum):
+    CASH_LOAN = "Cash Loan"
+    GOLD_LOAN = "Gold Loan"
+    HOME_LOAN = "Home Loan"
+
 class NoticeStatus(str, Enum):
     PENDING = "Pending"
     RESOLVED = "Resolved"
@@ -78,6 +84,7 @@ class LoanRecord(CamelCaseModel):
     total_loan: float
     paid_amount: float
     status: LoanStatus
+    loan_type: LoanType  # Added loan_type field
     created_at: datetime
     updated_at: datetime
     profile_photo: Optional[str] = None  # Base64 encoded
@@ -130,6 +137,7 @@ class LoanCreate(CamelCaseModel):
     total_loan: float
     paid_amount: float
     status: LoanStatus
+    loan_type: LoanType  # Added loan_type field
     profile_photo: Optional[str] = None
     occupation: Optional[str] = None
     address: Optional[str] = None
@@ -152,6 +160,7 @@ class LoanUpdate(CamelCaseModel):
     total_loan: Optional[float] = None
     paid_amount: Optional[float] = None
     status: Optional[LoanStatus] = None
+    loan_type: Optional[LoanType] = None  # Added loan_type field
     profile_photo: Optional[str] = None
     occupation: Optional[str] = None
     address: Optional[str] = None
