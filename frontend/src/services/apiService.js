@@ -1,6 +1,6 @@
 // src/services/apiService.js
 
-const API_BASE_URL = 'https://savkarproject.onrender.com'; 
+const API_BASE_URL = 'http://localhost:8000'; 
 
 class ApiService {
   // Helper method for making API requests
@@ -196,6 +196,40 @@ class ApiService {
   static getBaseUrl() {
     return API_BASE_URL;
   }
+  // Add these methods to your ApiService class
+
+// Legal Notices
+static async getAllNotices() {
+  const response = await this.request('/notices');
+  // Handle if the response is wrapped in a data object
+  return response.data || response;
+}
+
+// Example of creating a notice with UID
+static async createNotice(noticeData, uid) {
+  return this.request('/notices', {
+    method: 'POST',
+    body: noticeData,
+    headers: uid ? { 'x-dev-uid': uid } : {}
+  });
+}
+
+// Example of updating a notice with UID
+static async updateNotice(noticeId, noticeData, uid) {
+  return this.request(`/notices/${noticeId}`, {
+    method: 'PUT',
+    body: noticeData,
+    headers: uid ? { 'x-dev-uid': uid } : {}
+  });
+}
+
+// Example of deleting a notice with UID
+static async deleteNotice(noticeId, uid) {
+  return this.request(`/notices/${noticeId}`, {
+    method: 'DELETE',
+    headers: uid ? { 'x-dev-uid': uid } : {}
+  });
+}
 }
 
 export default ApiService;

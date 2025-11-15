@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import ApiService from "../services/apiService"; // Import the new API service
+import ApiService from "../services/apiService";
 
 const LegalNotices = () => {
   const [notices, setNotices] = useState([]);
@@ -8,14 +8,13 @@ const LegalNotices = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingNotice, setEditingNotice] = useState(null);
+  const [borrowers, setBorrowers] = useState([]);
   const [formData, setFormData] = useState({
-    customerName: "",
-    customerPhone: "",
-    loanAmount: "",
-    overdueAmount: "",
-    noticeType: "demand",
-    issueDate: "",
-    dueDate: "",
+    borrowerName: "",
+    borrowerId: "",
+    amountDue: "",
+    noticeDate: "",
+    status: "Pending",
     description: "",
   });
   const [loading, setLoading] = useState(true);
@@ -23,6 +22,7 @@ const LegalNotices = () => {
 
   useEffect(() => {
     loadNotices();
+    loadBorrowers();
   }, []);
 
   useEffect(() => {
@@ -44,18 +44,26 @@ const LegalNotices = () => {
     }
   };
 
+  const loadBorrowers = async () => {
+    try {
+      const borrowersData = await ApiService.getAllLoans();
+      setBorrowers(borrowersData || []);
+    } catch (error) {
+      console.error("Error loading borrowers:", error);
+      setBorrowers([]);
+    }
+  };
+
   const filterNotices = () => {
     let filtered = notices;
 
     if (searchTerm) {
       filtered = filtered.filter(
         (notice) =>
-          (notice.customerName || notice.borrowerName || "")
+          (notice.borrowerName || "")
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          (notice.customerPhone || notice.phoneNumber || "").includes(
-            searchTerm
-          )
+          (notice.borrowerId || "").includes(searchTerm)
       );
     }
 
@@ -70,12 +78,11 @@ const LegalNotices = () => {
     e.preventDefault();
 
     const noticeData = {
-      borrowerName: formData.customerName,
-      borrowerId: "", // We'll leave this empty for now, or you can fetch it based on phone
-      borrowerName: formData.customerName,
-      amountDue: parseFloat(formData.overdueAmount),
-      noticeDate: formData.issueDate,
-      status: "Pending",
+      borrowerName: formData.borrowerName,
+      borrowerId: formData.borrowerId || "",
+      amountDue: parseFloat(formData.amountDue),
+      noticeDate: formData.noticeDate,
+      status: formData.status,
       description: formData.description,
     };
 
@@ -89,19 +96,18 @@ const LegalNotices = () => {
       resetForm();
     } catch (error) {
       console.error("Error saving notice:", error);
-      alert("Failed to save notice. Please try again.");
+      const errorMessage = error.response?.data?.detail || error.message || "Failed to save notice. Please try again.";
+      alert(errorMessage);
     }
   };
 
   const resetForm = () => {
     setFormData({
-      customerName: "",
-      customerPhone: "",
-      loanAmount: "",
-      overdueAmount: "",
-      noticeType: "demand",
-      issueDate: "",
-      dueDate: "",
+      borrowerName: "",
+      borrowerId: "",
+      amountDue: "",
+      noticeDate: "",
+      status: "Pending",
       description: "",
     });
     setEditingNotice(null);
@@ -111,17 +117,11 @@ const LegalNotices = () => {
   const handleEdit = (notice) => {
     setEditingNotice(notice);
     setFormData({
-      customerName: notice.customerName || notice.borrowerName || "",
-      customerPhone: notice.customerPhone || notice.phoneNumber || "",
-      loanAmount: (notice.loanAmount || notice.amountDue || "0").toString(),
-      overdueAmount: (
-        notice.overdueAmount ||
-        notice.amountDue ||
-        "0"
-      ).toString(),
-      noticeType: notice.noticeType || "demand",
-      issueDate: notice.issueDate || notice.noticeDate || "",
-      dueDate: notice.dueDate || notice.noticeDate || "",
+      borrowerName: notice.borrowerName || "",
+      borrowerId: notice.borrowerId || "",
+      amountDue: (notice.amountDue || 0).toString(),
+      noticeDate: notice.noticeDate || "",
+      status: notice.status || "Pending",
       description: notice.description || "",
     });
     setShowAddModal(true);
@@ -134,21 +134,37 @@ const LegalNotices = () => {
         loadNotices();
       } catch (error) {
         console.error("Error deleting notice:", error);
-        alert("Failed to delete notice. Please try again.");
+        const errorMessage = error.response?.data?.detail || error.message || "Failed to delete notice. Please try again.";
+        alert(errorMessage);
       }
     }
   };
 
-  const getNoticeTypeClass = (type) => {
-    switch (type) {
-      case "demand":
-        return "bg-light text-warning border border-warning";
-      case "legal":
-        return "bg-light text-danger border border-danger";
-      case "court":
-        return "bg-light text-dark border border-dark";
-      default:
-        return "bg-light text-secondary border border-secondary";
+  const handleBorrowerSelect = (e) => {
+    const borrowerId = e.target.value;
+    if (!borrowerId) {
+      setFormData({
+        ...formData,
+        borrowerName: "",
+        borrowerId: "",
+        amountDue: "",
+        noticeDate: "",
+      });
+      return;
+    }
+
+    const selectedBorrower = borrowers.find(b => b.id === borrowerId);
+    if (selectedBorrower) {
+      const amountDue = (selectedBorrower.totalLoan || 0) - (selectedBorrower.paidAmount || 0);
+      const today = new Date().toISOString().split('T')[0];
+      
+      setFormData({
+        ...formData,
+        borrowerName: selectedBorrower.borrowerName || "",
+        borrowerId: selectedBorrower.id || "",
+        amountDue: amountDue.toString(),
+        noticeDate: today,
+      });
     }
   };
 
@@ -219,32 +235,32 @@ const LegalNotices = () => {
           </div>
         </div>
         <div className="col-md-3 mb-3">
-          <div className="card stat-card border-info">
-            <div className="card-body text-center">
-              <h3 className="text-info">
-                {notices.filter((n) => n.status === "Sent").length}
-              </h3>
-              <h6 className="text-muted">Sent Notices</h6>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
           <div className="card stat-card border-success">
             <div className="card-body text-center">
               <h3 className="text-success">
-                {notices.filter((n) => n.status === "Responded").length}
+                {notices.filter((n) => n.status === "Resolved").length}
               </h3>
-              <h6 className="text-muted">Responded</h6>
+              <h6 className="text-muted">Resolved Notices</h6>
             </div>
           </div>
         </div>
         <div className="col-md-3 mb-3">
-          <div className="card stat-card border-secondary">
+          <div className="card stat-card border-info">
             <div className="card-body text-center">
-              <h3 className="text-secondary">
-                {notices.filter((n) => n.status === "legal_action").length}
+              <h3 className="text-info">
+                {notices.length}
               </h3>
-              <h6 className="text-muted">Legal Action</h6>
+              <h6 className="text-muted">Total Notices</h6>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-3 mb-3">
+          <div className="card stat-card border-danger">
+            <div className="card-body text-center">
+              <h3 className="text-danger">
+                ₹{notices.reduce((sum, n) => sum + (n.amountDue || 0), 0).toLocaleString()}
+              </h3>
+              <h6 className="text-muted">Total Amount Due</h6>
             </div>
           </div>
         </div>
@@ -260,7 +276,7 @@ const LegalNotices = () => {
             <input
               type="text"
               className="form-control"
-              placeholder="Search by customer name or phone"
+              placeholder="Search by borrower name or ID"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -285,97 +301,78 @@ const LegalNotices = () => {
             <table className="table table-hover mb-0">
               <thead className="table-light">
                 <tr>
-                  <th>Customer Details</th>
-                  <th>Notice Type</th>
-                  <th>Loan Amount</th>
-                  <th>Overdue Amount</th>
-                  <th>Issue Date</th>
-                  <th>Due Date</th>
+                  <th>Borrower Details</th>
+                  <th>Amount Due</th>
+                  <th>Notice Date</th>
                   <th>Status</th>
+                  <th>Description</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredNotices.map((notice) => (
-                  <tr key={notice.id}>
-                    <td>
-                      <div>
-                        <div className="fw-medium">
-                          {notice.customerName || notice.borrowerName}
-                        </div>
-                        <small className="text-muted">
-                          {notice.customerPhone || notice.phoneNumber}
-                        </small>
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${getNoticeTypeClass(
-                          notice.noticeType || "demand"
-                        )}`}>
-                        {(notice.noticeType || "demand")
-                          .charAt(0)
-                          .toUpperCase() +
-                          (notice.noticeType || "demand").slice(1)}
-                      </span>
-                    </td>
-                    <td>
-                      ₹
-                      {(
-                        notice.loanAmount ||
-                        notice.amountDue ||
-                        0
-                      ).toLocaleString()}
-                    </td>
-                    <td className="text-danger fw-bold">
-                      ₹
-                      {(
-                        notice.overdueAmount ||
-                        notice.amountDue ||
-                        0
-                      ).toLocaleString()}
-                    </td>
-                    <td>
-                      {new Date(
-                        notice.issueDate || notice.noticeDate
-                      ).toLocaleDateString()}
-                    </td>
-                    <td>
-                      {new Date(
-                        notice.dueDate || notice.noticeDate
-                      ).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${getStatusClass(notice.status)}`}>
-                        {notice.status
-                          .replace("_", " ")
-                          .charAt(0)
-                          .toUpperCase() +
-                          notice.status.replace("_", " ").slice(1)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="btn-group">
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => handleEdit(notice)}>
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-success"
-                          title="Generate PDF">
-                          <i className="fas fa-file-pdf"></i>
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleDelete(notice.id)}>
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </div>
+                {filteredNotices.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-4">
+                      No notices found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredNotices.map((notice) => (
+                    <tr key={notice.id}>
+                      <td>
+                        <div>
+                          <div className="fw-medium">
+                            {notice.borrowerName}
+                          </div>
+                          <small className="text-muted">
+                            ID: {notice.borrowerId || "N/A"}
+                          </small>
+                        </div>
+                      </td>
+                      <td className="text-danger fw-bold">
+                        ₹{notice.amountDue.toLocaleString()}
+                      </td>
+                      <td>
+                        {new Date(notice.noticeDate).toLocaleDateString()}
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${getStatusClass(notice.status)}`}>
+                          {notice.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div 
+                          className="text-truncate" 
+                          style={{ maxWidth: "200px" }} 
+                          title={notice.description || "No description"}>
+                          {notice.description || "No description"}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="btn-group">
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => handleEdit(notice)}
+                            title="Edit">
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            title="Generate PDF">
+                            <i className="fas fa-file-pdf"></i>
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleDelete(notice.id)}
+                            title="Delete">
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -405,113 +402,100 @@ const LegalNotices = () => {
                 <div className="modal-body">
                   <div className="row">
                     <div className="col-md-6 mb-3">
-                      <label className="form-label">Customer Name *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={formData.customerName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            customerName: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Customer Phone *</label>
-                      <input
-                        type="tel"
-                        className="form-control"
-                        value={formData.customerPhone}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            customerPhone: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4 mb-3">
-                      <label className="form-label">
-                        Original Loan Amount *
-                      </label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        value={formData.loanAmount}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            loanAmount: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4 mb-3">
-                      <label className="form-label">Overdue Amount *</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        value={formData.overdueAmount}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            overdueAmount: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4 mb-3">
-                      <label className="form-label">Notice Type *</label>
+                      <label className="form-label">Select Borrower</label>
                       <select
                         className="form-select"
-                        value={formData.noticeType}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            noticeType: e.target.value,
-                          })
-                        }
-                        required>
-                        <option value="demand">Demand Notice</option>
-                        <option value="legal">Legal Notice</option>
-                        <option value="court">Court Notice</option>
+                        value={formData.borrowerId}
+                        onChange={handleBorrowerSelect}>
+                        <option value="">Select a borrower...</option>
+                        {borrowers.map(borrower => (
+                          <option key={borrower.id} value={borrower.id}>
+                            {borrower.borrowerName} - {borrower.phoneNumber}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-6 mb-3">
-                      <label className="form-label">Issue Date *</label>
+                      <label className="form-label">Borrower Name *</label>
                       <input
-                        type="date"
+                        type="text"
                         className="form-control"
-                        value={formData.issueDate}
+                        value={formData.borrowerName}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            issueDate: e.target.value,
+                            borrowerName: e.target.value,
                           })
                         }
                         required
                       />
                     </div>
                     <div className="col-md-6 mb-3">
-                      <label className="form-label">Response Due Date *</label>
+                      <label className="form-label">Borrower ID</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={formData.borrowerId}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            borrowerId: e.target.value,
+                          })
+                        }
+                        placeholder="Optional"
+                        readOnly
+                      />
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Amount Due *</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={formData.amountDue}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            amountDue: e.target.value,
+                          })
+                        }
+                        required
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Notice Date *</label>
                       <input
                         type="date"
                         className="form-control"
-                        value={formData.dueDate}
+                        value={formData.noticeDate}
                         onChange={(e) =>
-                          setFormData({ ...formData, dueDate: e.target.value })
+                          setFormData({
+                            ...formData,
+                            noticeDate: e.target.value,
+                          })
                         }
                         required
                       />
                     </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Status *</label>
+                      <select
+                        className="form-select"
+                        value={formData.status}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            status: e.target.value,
+                          })
+                        }
+                        required>
+                        <option value="Pending">Pending</option>
+                        <option value="Resolved">Resolved</option>
+                      </select>
+                    </div>
                     <div className="col-12 mb-3">
-                      <label className="form-label">Description/Notes</label>
+                      <label className="form-label">Description</label>
                       <textarea
                         className="form-control"
                         rows="3"

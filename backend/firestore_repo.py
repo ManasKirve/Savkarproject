@@ -508,7 +508,66 @@ def create_profile_for_user(uid: str, profile_data: Dict[str, Any]) -> Profile:
     except Exception as e:
         logger.error(f"Error creating profile for user {uid}: {e}")
         raise Exception(f"Failed to create profile for user {uid}: {e}")
-    
+
+
+def update_notice_for_user(uid: str, notice_id: str, update_data: Dict[str, Any]) -> LegalNotice:
+    """Update an existing notice for a user"""
+    try:
+        # First ensure the user exists
+        if not ensure_user_exists(uid):
+            logger.error(f"Failed to ensure user {uid} exists")
+            raise Exception(f"Failed to update notice for user {uid}")
+            
+        col = _notices_col(uid)
+        if not col:
+            logger.error(f"Failed to get notices collection for user {uid}")
+            raise Exception(f"Failed to update notice for user {uid}")
+            
+        doc_ref = col.document(notice_id)
+        update_data['updated_at'] = datetime.utcnow()
+        doc_ref.update(update_data)
+        logger.info(f"Updated notice {notice_id} for user {uid}")
+        
+        updated = doc_ref.get().to_dict()
+        if updated:
+            updated['id'] = doc_ref.id
+            # Convert timestamps
+            for time_field in ['created_at', 'updated_at']:
+                if time_field in updated and hasattr(updated[time_field], 'isoformat'):
+                    updated[time_field] = updated[time_field].isoformat()
+            
+            # Convert snake_case keys to camelCase
+            updated = _convert_keys_to_camel_case(updated)
+            
+            try:
+                return LegalNotice(**updated)
+            except Exception as e:
+                logger.error(f"Error creating LegalNotice from updated data: {e}")
+                raise Exception(f"Failed to update notice for user {uid}: {e}")
+        raise Exception(f"Failed to retrieve updated notice for user {uid}")
+    except Exception as e:
+        logger.error(f"Error updating notice {notice_id} for user {uid}: {e}")
+        raise Exception(f"Failed to update notice for user {uid}: {e}")
+
+def delete_notice_for_user(uid: str, notice_id: str):
+    """Delete a notice for a user"""
+    try:
+        # First ensure the user exists
+        if not ensure_user_exists(uid):
+            logger.error(f"Failed to ensure user {uid} exists")
+            raise Exception(f"Failed to delete notice for user {uid}")
+            
+        col = _notices_col(uid)
+        if not col:
+            logger.error(f"Failed to get notices collection for user {uid}")
+            raise Exception(f"Failed to delete notice for user {uid}")
+            
+        doc_ref = col.document(notice_id)
+        doc_ref.delete()
+        logger.info(f"Deleted notice {notice_id} for user {uid}")
+    except Exception as e:
+        logger.error(f"Error deleting notice {notice_id} for user {uid}: {e}")
+        raise Exception(f"Failed to delete notice for user {uid}: {e}")
 def update_profile_for_user(uid: str, profile_id: str, update_data: Dict[str, Any]) -> Profile:
     """Update an existing profile for a user"""
     try:

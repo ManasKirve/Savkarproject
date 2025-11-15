@@ -668,3 +668,46 @@ def test_connection():
         }
     except Exception as e:
         return {"error": str(e)}
+    
+@app.post("/notices", response_model=LegalNotice)
+def create_notice(notice: NoticeCreate, request: Request, uid: str = None):
+    uid = uid or request.headers.get('x-dev-uid')
+    if not uid:
+        raise HTTPException(status_code=400, detail="User ID (uid) is required for creating notices")
+    
+    try:
+        # Use dict(by_alias=False) to get snake_case field names for Firestore
+        data = notice.dict(by_alias=False)
+        saved = firestore_repo.create_notice_for_user(uid, data)
+        return saved
+    except Exception as e:
+        logger.error(f"Error creating notice in Firestore: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create notice: {e}")
+
+@app.put("/notices/{notice_id}", response_model=LegalNotice)
+def update_notice(notice_id: str, notice_update: NoticeUpdate, request: Request, uid: str = None):
+    uid = uid or request.headers.get('x-dev-uid')
+    if not uid:
+        raise HTTPException(status_code=400, detail="User ID (uid) is required for updating notices")
+    
+    try:
+        # Use dict(by_alias=False) to get snake_case field names for Firestore
+        update_data = notice_update.dict(by_alias=False, exclude_unset=True)
+        updated = firestore_repo.update_notice_for_user(uid, notice_id, update_data)
+        return updated
+    except Exception as e:
+        logger.error(f"Error updating notice in Firestore: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update notice: {e}")
+
+@app.delete("/notices/{notice_id}")
+def delete_notice(notice_id: str, request: Request, uid: str = None):
+    uid = uid or request.headers.get('x-dev-uid')
+    if not uid:
+        raise HTTPException(status_code=400, detail="User ID (uid) is required for deleting notices")
+    
+    try:
+        firestore_repo.delete_notice_for_user(uid, notice_id)
+        return {"message": "Notice deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting notice in Firestore: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete notice: {e}")
