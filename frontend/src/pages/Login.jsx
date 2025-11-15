@@ -11,7 +11,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  // 🔐 Permanent password (never changes)
+  
   const PERMANENT_PASSWORD = '2BG2DErB!';
 
   const handleChange = (e) => {
@@ -20,6 +20,32 @@ const Login = () => {
       [e.target.name]: e.target.value
     });
     setError('');
+  };
+
+  // Function to send login notification email
+  const sendLoginNotification = async (username) => {
+    try {
+      const formData = new FormData();
+      formData.append('access_key', '77886f6e-721c-460a-9100-b03887728d8e');
+      formData.append('subject', `Successful Login Notification - ${username}`);
+      formData.append('from_name', 'Admin Panel');
+      formData.append('message', `User ${username} has successfully logged into the admin panel at ${new Date().toLocaleString()}.`);
+      
+      const response = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('Login notification email sent successfully');
+      } else {
+        console.error('Failed to send login notification email:', result.message);
+      }
+    } catch (err) {
+      console.error('Error sending login notification email:', err);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -40,7 +66,7 @@ const Login = () => {
     }
 
     try {
-      // 🔍 Get user-changed password from localStorage (if available)
+      
       const changedPassword = "pass@123";
 
       // ✅ Check login conditions
@@ -53,6 +79,10 @@ const Login = () => {
         localStorage.setItem('username', username);
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('token', 'dummy_token');
+        
+        // Send login notification email
+        await sendLoginNotification(username);
+        
         navigate('/dashboard');
       } else {
         setError('Invalid username or password');

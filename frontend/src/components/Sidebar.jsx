@@ -15,12 +15,12 @@ const Sidebar = ({ isCollapsed }) => {
       icon: "fas fa-file-alt",
       description: "Loan Management"
     },
-    { 
-      title: "Legal Notices", 
-      url: "/legal-notices", 
-      icon: "fas fa-balance-scale",
-      description: "Notice Management"
-    },
+    // { 
+    //   title: "Legal Notices", 
+    //   url: "/legal-notices", 
+    //   icon: "fas fa-balance-scale",
+    //   description: "Notice Management"
+    // },
     { 
       title: "Loan Calculator", 
       url: "/loan-calculator", 
@@ -94,14 +94,7 @@ const Sidebar = ({ isCollapsed }) => {
       </div>
 
       {/* Footer */}
-      <div className="pt-1 pb-3 border-top" style={{ position: 'absolute', bottom: '20px', left: '0', right: '0' }}>
-        {!isCollapsed && (
-          <div className="text-center">
-            <p className="small text-muted mb-0">© 2024 Money Lender Pro</p>
-            <p className="small text-muted">v1.0.0</p>
-          </div>
-        )}
-      </div>
+      
     </div>
   );
 };

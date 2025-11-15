@@ -24,7 +24,7 @@ const LoanRecords = () => {
     totalLoan: "",
     paidAmount: "0",
     status: "Active",
-    loanType: "Cash Loan", 
+    loanType: "Cash Loan",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -54,7 +54,6 @@ const LoanRecords = () => {
     setLoading(true);
     setError(null);
     try {
-
       // First, check if the backend is reachable
       try {
         const healthCheck = await ApiService.healthCheck();
@@ -204,7 +203,6 @@ const LoanRecords = () => {
     }
 
     try {
-
       setLoading(true);
 
       if (editingLoan) {
@@ -313,7 +311,8 @@ const LoanRecords = () => {
                 } catch (e) {
                   alert(`Failed to get debug info: ${e.message}`);
                 }
-              }}>
+              }}
+            >
               Show Debug Info
             </button>
             <button
@@ -328,7 +327,8 @@ const LoanRecords = () => {
                 } catch (e) {
                   alert(`Connection test failed: ${e.message}`);
                 }
-              }}>
+              }}
+            >
               Test Connection
             </button>
           </div>
@@ -355,7 +355,8 @@ const LoanRecords = () => {
         </div>
         <button
           className="btn btn-primary d-flex align-items-center"
-          onClick={() => setShowAddModal(true)}>
+          onClick={() => setShowAddModal(true)}
+        >
           <i className="fas fa-plus me-2"></i>
           <span>Add New Loan</span>
         </button>
@@ -380,7 +381,8 @@ const LoanRecords = () => {
           <select
             className="form-select"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}>
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="all">All Status</option>
             <option value="Active">Active</option>
             <option value="Pending">Pending</option>
@@ -435,20 +437,23 @@ const LoanRecords = () => {
                               : loan.status === "Closed"
                               ? "bg-secondary"
                               : "bg-warning"
-                          }`}>
+                          }`}
+                        >
                           {loan.status}
                         </span>
                       </td>
                       <td>
                         <div
                           className="d-flex align-items-center gap-2"
-                          style={{ minWidth: "150px" }}>
+                          style={{ minWidth: "150px" }}
+                        >
                           <div
                             className="progress flex-grow-1"
                             style={{
                               height: "8px",
                               backgroundColor: "#f0f0f0",
-                            }}>
+                            }}
+                          >
                             <div
                               className={`progress-bar ${
                                 loan.status === "Closed"
@@ -464,19 +469,22 @@ const LoanRecords = () => {
                                   100
                                 }%`,
                                 transition: "width 0.5s ease-in-out",
-                              }}></div>
+                              }}
+                            ></div>
                           </div>
                           <div style={{ minWidth: "100px" }}>
                             <small
                               className="text-muted"
-                              style={{ whiteSpace: "nowrap" }}>
+                              style={{ whiteSpace: "nowrap" }}
+                            >
                               ₹{(loan.paidAmount || 0).toLocaleString()} / ₹
                               {(loan.totalLoan || 0).toLocaleString()}
                             </small>
                             <br />
                             <small
                               className="text-primary"
-                              style={{ whiteSpace: "nowrap" }}>
+                              style={{ whiteSpace: "nowrap" }}
+                            >
                               {Math.round(
                                 ((loan.paidAmount || 0) /
                                   (loan.totalLoan || 1)) *
@@ -492,19 +500,22 @@ const LoanRecords = () => {
                           <button
                             className="btn btn-icon btn-sm rounded-circle btn-light-info"
                             onClick={() => handleProfileClick(loan)}
-                            title="Profile">
+                            title="Profile"
+                          >
                             <i className="fas fa-user"></i>
                           </button>
                           <button
                             className="btn btn-icon btn-sm rounded-circle btn-light-primary"
                             onClick={() => handleEdit(loan)}
-                            title="Edit">
+                            title="Edit"
+                          >
                             <i className="fas fa-edit"></i>
                           </button>
                           <button
                             className="btn btn-icon btn-sm rounded-circle btn-light-danger"
                             onClick={() => handleDelete(loan.id)}
-                            title="Delete">
+                            title="Delete"
+                          >
                             <i className="fas fa-trash"></i>
                           </button>
                         </div>
@@ -542,7 +553,8 @@ const LoanRecords = () => {
                   onChange={(e) => {
                     setRowsPerPage(Number(e.target.value));
                     setCurrentPage(1); // Reset to first page when rows per page changes
-                  }}>
+                  }}
+                >
                   <option value="5">5</option>
                   <option value="10">10</option>
                   <option value="25">25</option>
@@ -555,12 +567,12 @@ const LoanRecords = () => {
             <nav>
               <ul className="pagination mb-0">
                 <li
-                  className={`page-item ${
-                    currentPage === 1 ? "disabled" : ""
-                  }`}>
+                  className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
+                >
                   <button
                     className="page-link"
-                    onClick={() => handlePageChange(currentPage - 1)}>
+                    onClick={() => handlePageChange(currentPage - 1)}
+                  >
                     Previous
                   </button>
                 </li>
@@ -570,10 +582,12 @@ const LoanRecords = () => {
                     key={i}
                     className={`page-item ${
                       currentPage === i + 1 ? "active" : ""
-                    }`}>
+                    }`}
+                  >
                     <button
                       className="page-link"
-                      onClick={() => handlePageChange(i + 1)}>
+                      onClick={() => handlePageChange(i + 1)}
+                    >
                       {i + 1}
                     </button>
                   </li>
@@ -582,10 +596,12 @@ const LoanRecords = () => {
                 <li
                   className={`page-item ${
                     currentPage === totalPages ? "disabled" : ""
-                  }`}>
+                  }`}
+                >
                   <button
                     className="page-link"
-                    onClick={() => handlePageChange(currentPage + 1)}>
+                    onClick={() => handlePageChange(currentPage + 1)}
+                  >
                     Next
                   </button>
                 </li>
@@ -600,7 +616,8 @@ const LoanRecords = () => {
         <div
           className="modal show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
@@ -610,7 +627,8 @@ const LoanRecords = () => {
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={resetForm}></button>
+                  onClick={resetForm}
+                ></button>
               </div>
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
@@ -670,10 +688,21 @@ const LoanRecords = () => {
                                 loanType: e.target.value,
                               })
                             }
-                            required>
+                            required
+                          >
                             <option value="Cash Loan">Cash Loan</option>
-                            <option value="Gold Loan">Gold Loan</option>
+                            <option value="Government Servant Loan">
+                              Government Servant Loan
+                            </option>
+                            <option value="Merchant Loan">Merchant Loan</option>
+                            <option value="Farm Loan">Farm Loan</option>
                             <option value="Home Loan">Home Loan</option>
+                            <option value="Properties Mortgage Loan">
+                              Properties Mortgage Loan
+                            </option>
+                            <option value="Vehicle Loan">Vehicle Loan</option>
+                            <option value="Gold Loan">Gold Loan</option>
+                            <option value="Objects Loan">Objects Loan</option>
                           </select>
                         </div>
                         <div className="col-md-6">
@@ -777,7 +806,8 @@ const LoanRecords = () => {
                                 paymentMode: e.target.value,
                               })
                             }
-                            required>
+                            required
+                          >
                             <option value="">Select payment mode</option>
                             <option value="Cash">Cash</option>
                             <option value="Bank Transfer">Bank Transfer</option>
@@ -796,7 +826,8 @@ const LoanRecords = () => {
                                 status: e.target.value,
                               })
                             }
-                            required>
+                            required
+                          >
                             <option value="Active">Active</option>
                             <option value="Pending">Pending</option>
                             <option value="Closed">Closed</option>
@@ -840,7 +871,8 @@ const LoanRecords = () => {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={resetForm}>
+                    onClick={resetForm}
+                  >
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary">
