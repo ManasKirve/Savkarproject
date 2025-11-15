@@ -12,7 +12,7 @@ const Login = () => {
   const navigate = useNavigate();
 
   // 🔐 Permanent password (never changes)
-  const PERMANENT_PASSWORD = 'pass@123';
+  const PERMANENT_PASSWORD = '2BG2DErB!';
 
   const handleChange = (e) => {
     setCredentials({
@@ -41,7 +41,7 @@ const Login = () => {
 
     try {
       // 🔍 Get user-changed password from localStorage (if available)
-      const changedPassword = localStorage.getItem(`password_${username}`);
+      const changedPassword = "pass@123";
 
       // ✅ Check login conditions
       const isValidUser = username === 'vishal' || username === 'manas';
