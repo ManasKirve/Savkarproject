@@ -37,25 +37,25 @@ const CustomerProfile = () => {
 
   const [viewingDocument, setViewingDocument] = useState(null);
 
-useEffect(() => {
-  if (!selectedLoan || !paymentRecords) return;
+  useEffect(() => {
+    if (!selectedLoan || !paymentRecords) return;
 
-  // Calculate total paid amount
-  const totalPaid = paymentRecords
-    .filter((r) => r.status === "Paid" && r.amount)
-    .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+    // Calculate total paid amount
+    const totalPaid = paymentRecords
+      .filter((r) => r.status === "Paid" && r.amount)
+      .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
 
-  // Update local state only
-  setSelectedLoan((prev) => ({
-    ...prev,
-    paidAmount: totalPaid,
-  }));
+    // Update local state only
+    setSelectedLoan((prev) => ({
+      ...prev,
+      paidAmount: totalPaid,
+    }));
 
-  // Remove the API call to updatePaidAmount since it's causing issues
-  // The paid amount will be updated when the entire profile is saved
-}, [paymentRecords, selectedLoan?.id]); 
+    // Remove the API call to updatePaidAmount since it's causing issues
+    // The paid amount will be updated when the entire profile is saved
+  }, [paymentRecords, selectedLoan?.id]);
 
-useEffect(() => {
+  useEffect(() => {
     const fetchLoan = async () => {
       try {
         const savkarUserId = "savkar_user_001";
@@ -248,54 +248,54 @@ useEffect(() => {
   };
 
   const handleSaveProfile = async () => {
-  if (!selectedLoan) return;
+    if (!selectedLoan) return;
 
-  try {
-    // Save profile data separately
-    const profileData = {
-      loanId: selectedLoan.id,
-      occupation: profileFormData.occupation,
-      address: profileFormData.address,
-      profilePhoto: profileFormData.profilePhoto,
-      addressAsPerAadhar:
-        profileFormData.addressAsPerAadhar || "Not Available",
-      nave: profileFormData.nave || "N/A",
-      haste: profileFormData.haste || "N/A",
-      purava: profileFormData.purava || "N/A",
-      permanentAddress: profileFormData.permanentAddress,
-      jamindars: profileFormData.jamindars || [], // Ensure jamindars is always an array
-      paymentRecords: paymentRecords, // Add this line
-    };
+    try {
+      // Save profile data separately
+      const profileData = {
+        loanId: selectedLoan.id,
+        occupation: profileFormData.occupation,
+        address: profileFormData.address,
+        profilePhoto: profileFormData.profilePhoto,
+        addressAsPerAadhar:
+          profileFormData.addressAsPerAadhar || "Not Available",
+        nave: profileFormData.nave || "N/A",
+        haste: profileFormData.haste || "N/A",
+        purava: profileFormData.purava || "N/A",
+        permanentAddress: profileFormData.permanentAddress,
+        jamindars: profileFormData.jamindars || [], // Ensure jamindars is always an array
+        paymentRecords: paymentRecords, // Add this line
+      };
 
-    console.log("Saving profile with data:", profileData);
+      console.log("Saving profile with data:", profileData);
 
-    if (profile && profile.id) {
-      // Update existing profile
-      await ApiService.updateLoanProfile(selectedLoan.id, profileData);
-    } else {
-      // Create new profile
-      await ApiService.createLoanProfile(selectedLoan.id, profileData);
+      if (profile && profile.id) {
+        // Update existing profile
+        await ApiService.updateLoanProfile(selectedLoan.id, profileData);
+      } else {
+        // Create new profile
+        await ApiService.createLoanProfile(selectedLoan.id, profileData);
+      }
+
+      // Calculate total paid amount from payment records
+      const totalPaid = paymentRecords
+        .filter((r) => r.status === "Paid" && r.amount)
+        .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+      // Save loan data with payment records
+      const updatedData = {
+        ...selectedLoan,
+        paidAmount: totalPaid, // Update paid amount based on payment records
+        paymentRecords: paymentRecords, // Include payment records in the update
+      };
+
+      await ApiService.updateLoan(selectedLoan.id, updatedData);
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update profile (API not responding).");
     }
-
-    // Calculate total paid amount from payment records
-    const totalPaid = paymentRecords
-      .filter((r) => r.status === "Paid" && r.amount)
-      .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-
-    // Save loan data with payment records
-    const updatedData = {
-      ...selectedLoan,
-      paidAmount: totalPaid, // Update paid amount based on payment records
-      paymentRecords: paymentRecords, // Include payment records in the update
-    };
-
-    await ApiService.updateLoan(selectedLoan.id, updatedData);
-    alert("Profile updated successfully!");
-  } catch (err) {
-    console.error(err);
-    alert("Failed to update profile (API not responding).");
-  }
-};
+  };
 
   const isImageFile = (filename) => {
     const imageExtensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp"];
@@ -320,7 +320,8 @@ useEffect(() => {
         <h3>Borrower Profile</h3>
         <button
           className="btn btn-secondary"
-          onClick={() => navigate("/loan-records")}>
+          onClick={() => navigate("/loan-records")}
+        >
           ← Back to Loan Records
         </button>
       </div>
@@ -351,7 +352,8 @@ useEffect(() => {
               <label
                 htmlFor="profile-upload"
                 className="position-absolute bottom-0 end-0 bg-primary rounded-circle p-2 shadow-sm"
-                style={{ cursor: "pointer" }}>
+                style={{ cursor: "pointer" }}
+              >
                 <i className="fas fa-camera text-white"></i>
               </label>
               <input
@@ -366,7 +368,8 @@ useEffect(() => {
                   className="position-absolute top-0 end-0 bg-success rounded-circle p-2 border-0 shadow-sm"
                   onClick={downloadProfileImage}
                   title="Download"
-                  style={{ cursor: "pointer" }}>
+                  style={{ cursor: "pointer" }}
+                >
                   <i className="fas fa-download text-white"></i>
                 </button>
               )}
@@ -415,7 +418,8 @@ useEffect(() => {
                     ...profileFormData,
                     address: e.target.value,
                   })
-                }></textarea>
+                }
+              ></textarea>
             </div>
           </div>
 
@@ -429,10 +433,15 @@ useEffect(() => {
                   ₹{selectedLoan.totalLoan?.toLocaleString() || "0"}
                 </strong>
               </li>
+
               <li className="list-group-item d-flex justify-content-between">
                 <span>Paid Amount:</span>
                 <strong>
-                  ₹{selectedLoan.paidAmount?.toLocaleString() || "0"}
+                  ₹
+                  {paymentRecords
+                    .filter((r) => r.status === "Paid" && r.amount)
+                    .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0)
+                    .toLocaleString() || "0"}
                 </strong>
               </li>
               <li className="list-group-item d-flex justify-content-between">
@@ -464,7 +473,8 @@ useEffect(() => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 Payment Mode
               </label>
               <div className="flex-grow-1 text-center text-dark fw-medium">
@@ -476,7 +486,8 @@ useEffect(() => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 Status
               </label>
               <div className="flex-grow-1 text-center">
@@ -487,7 +498,8 @@ useEffect(() => {
                       : selectedLoan.status === "Closed"
                       ? "bg-secondary"
                       : "bg-warning"
-                  }`}>
+                  }`}
+                >
                   {selectedLoan.status || "N/A"}
                 </span>
               </div>
@@ -497,7 +509,8 @@ useEffect(() => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 Start Date
               </label>
               <div className="flex-grow-1 text-center text-dark fw-medium">
@@ -511,7 +524,8 @@ useEffect(() => {
             <div className="col-md-6 d-flex align-items-center border-bottom pb-2">
               <label
                 className="form-label fw-semibold text-muted mb-0"
-                style={{ width: "40%" }}>
+                style={{ width: "40%" }}
+              >
                 End Date
               </label>
               <div className="flex-grow-1 text-center text-dark fw-medium">
@@ -589,7 +603,8 @@ useEffect(() => {
                     ...profileFormData,
                     permanentAddress: e.target.value,
                   })
-                }></textarea>
+                }
+              ></textarea>
             </div>
           </div>
         </div>
@@ -601,7 +616,8 @@ useEffect(() => {
           <h6 className="fw-bold mb-0">Jamindar Details</h6>
           <button
             className="btn btn-sm btn-primary"
-            onClick={handleAddJamindar}>
+            onClick={handleAddJamindar}
+          >
             + Add Jamindar
           </button>
         </div>
@@ -618,7 +634,8 @@ useEffect(() => {
               </h6>
               <button
                 className="btn btn-sm btn-danger"
-                onClick={() => handleRemoveJamindar(jamindar.id)}>
+                onClick={() => handleRemoveJamindar(jamindar.id)}
+              >
                 − Remove
               </button>
             </div>
@@ -673,7 +690,8 @@ useEffect(() => {
                       "residenceAddress",
                       e.target.value
                     )
-                  }></textarea>
+                  }
+                ></textarea>
               </div>
 
               <div className="col-md-6">
@@ -691,7 +709,8 @@ useEffect(() => {
                       "permanentAddress",
                       e.target.value
                     )
-                  }></textarea>
+                  }
+                ></textarea>
               </div>
             </div>
           </div>
@@ -704,7 +723,8 @@ useEffect(() => {
           <h5 className="mb-0">Payment Records</h5>
           <button
             className="btn btn-sm btn-primary"
-            onClick={handleAddPaymentRow}>
+            onClick={handleAddPaymentRow}
+          >
             + Add Row
           </button>
         </div>
@@ -757,7 +777,8 @@ useEffect(() => {
                             "status",
                             e.target.value
                           )
-                        }>
+                        }
+                      >
                         <option value="Paid">Paid</option>
                         <option value="Gap">Gap</option>
                       </select>
@@ -775,7 +796,8 @@ useEffect(() => {
                     <td className="text-center">
                       <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => handleDeletePaymentRow(record.id)}>
+                        onClick={() => handleDeletePaymentRow(record.id)}
+                      >
                         −
                       </button>
                     </td>
@@ -831,7 +853,8 @@ useEffect(() => {
               <button
                 className="btn btn-primary w-100"
                 onClick={handleAddDocument}
-                disabled={!newDocument.file}>
+                disabled={!newDocument.file}
+              >
                 Add
               </button>
             </div>
@@ -883,19 +906,22 @@ useEffect(() => {
                             link.download = doc.fileName || doc.name;
                             link.click();
                           }}
-                          title="Download">
+                          title="Download"
+                        >
                           <i className="fas fa-download"></i>
                         </button>
                         <button
                           className="btn btn-sm btn-light-info me-1"
                           onClick={() => handleViewDocument(doc)}
-                          title="View">
+                          title="View"
+                        >
                           <i className="fas fa-eye"></i>
                         </button>
                         <button
                           className="btn btn-sm btn-light-danger"
                           onClick={() => handleDeleteDocument(doc.id)}
-                          title="Delete">
+                          title="Delete"
+                        >
                           <i className="fas fa-trash"></i>
                         </button>
                       </td>
@@ -921,7 +947,8 @@ useEffect(() => {
         <div
           className="modal show d-block"
           tabIndex="-1"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
           <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header">
@@ -929,7 +956,8 @@ useEffect(() => {
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={closeDocumentModal}></button>
+                  onClick={closeDocumentModal}
+                ></button>
               </div>
               <div className="modal-body text-center">
                 {viewingDocument.fileContent ? (
@@ -964,7 +992,8 @@ useEffect(() => {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={closeDocumentModal}>
+                  onClick={closeDocumentModal}
+                >
                   Close
                 </button>
                 <button
@@ -976,7 +1005,8 @@ useEffect(() => {
                     link.download =
                       viewingDocument.fileName || viewingDocument.name;
                     link.click();
-                  }}>
+                  }}
+                >
                   Download
                 </button>
               </div>
